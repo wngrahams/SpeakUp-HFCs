@@ -20,8 +20,9 @@ if "`c(username)'" == "bl517" {
 	cd "C:/Users/bl517/Box Sync/Data Analysis/SpeakUp"
 	}
 	/*TODO: insert interns file paths here*/
-else if "`c(username)'" == "" {
-	cd ""
+// Graham:
+else if "`c(username)'" == "grahamstubbs" {
+	cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs"
 	}
 
 *File paths
@@ -31,9 +32,9 @@ global FinalFolder "Data/Final"
 global OutputFolder "Monitoring/Round 4 monitoring"	
 	
 *Switches
-global precleaning "on"
-global enums "on"
-global pairs "on"
+global precleaning "off"
+global enums "off"
+global pairs "off"
 global quality "on"
 
 *Date
@@ -132,6 +133,18 @@ if "$enums" == "on" {
 
 if "$quality" == "on" {	
 
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
+	
+	// get Total records
+	count
+	local total_records = r(N)
+	// dis `total_records'
 
-
+	// get number and percent of hit&runs
+	count if hitandrun == 1
+	local hitandrun_amt = r(N)
+	// dis `hitandrun_amt'
+	local hitandrun_pct = `hitandrun_amt'/`total_records'
+	// dis `hitandrun_pct'
+	
 }
