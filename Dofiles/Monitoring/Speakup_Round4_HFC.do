@@ -145,6 +145,7 @@ if "$quality" == "on" {
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
 	putexcel C4 = `total_records'
 	
+	
 	/* get number and percent of hit&runs */
 	count if hitandrun == 1
 	local hitandrun_amt = r(N)
@@ -152,7 +153,11 @@ if "$quality" == "on" {
 	
 	// export to excel
 	putexcel C6 = `hitandrun_amt'
-	putexcel C7 = (`hitandrun_pct'), nformat(percent_d2)
+	putexcel C7 = (`hitandrun_pct'), nformat(percent_d2)	
+	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if hitandrun == 1, sheetmodify sheet("_export H+R ") firstrow(var)
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export H+R ")
+	putexcel (AA1:AA10) fpattern( , , lightpink)
+	
 	
 	/* search and record duplicates */
 	// find and group records with the same date
@@ -290,7 +295,25 @@ if "$quality" == "on" {
 	//   duplicates_amt)
 	duplicates tag duplicates_grouped if duplicates_grouped != 0, gen(duplicates_amt)
 	
+	// get number and percent of duplicates
+	summ duplicates_amt
+	local max_dups = r(max)
+	local duplicate_count = 0
+	forvalues i = 1/`max_dups' {
+		count if duplicates_amt == `i'
+		local overcount = r(N)
+		local duplicate_count = `duplicate_count' + `overcount' - (`overcount'/(`i' + 1))
+	}
+	
+	local duplicate_pct = `duplicate_count'/`total_records'
+	
 	// export to excel
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
+	
+	putexcel C9 = `duplicate_count'
+	putexcel D9 = "this is the amount of records that are likely duplicates of another"
+	putexcel C10 = (`duplicate_pct'), nformat(percent_d2)	
+	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if duplicates_grouped != 0, sheetmodify sheet("_export dups") firstrow(var)
 	
 	
 	/* Flag and export all entries with additional info (potential issues) */
@@ -306,6 +329,17 @@ if "$quality" == "on" {
 	}
 	// drop uneeded var
 	drop additionalinfo_lower
+	
+	// get counts
+	count if potential_issues == 1
+	local flags_count = r(N)
+	local flags_pct = `flags_count'/`total_records'
+	
+	// export to excel
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
+	putexcel C12 = `flags_count'
+	putexcel C13 = `flags_pct', nformat(percent_d2)
+	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if potential_issues==1, sheetmodify sheet("_export flags") firstrow(var)
 	
 	putexcel close
 }
