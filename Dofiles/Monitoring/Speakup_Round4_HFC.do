@@ -147,4 +147,33 @@ if "$quality" == "on" {
 	local hitandrun_pct = `hitandrun_amt'/`total_records'
 	// dis `hitandrun_pct'
 	
+	// search and record duplicates
+	duplicates tag date, gen(same_date)
+	sort date
+	
+	gen same_date_grouped = 0
+	
+	local date_duplicate_num = 0
+	local counter = 0
+	local i = 1
+	while `i' <= `total_records' {
+	
+		if same_date[`i'] != 0 {
+			local date_duplicate_num = same_date[`i']
+			local counter = `counter' + 1
+			
+			local j = `i'
+			while `j' <= (`i' + `date_duplicate_num') {
+				replace same_date_grouped = `counter' if _n == `j'
+				local j = `j' + 1
+			}
+			
+			local i = `i' + `date_duplicate_num' + 1
+		}
+		else {
+			local i = `i' + 1
+		}
+	}
+	
+	
 }
