@@ -136,14 +136,17 @@ if "$quality" == "on" {
 
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
+	
 	/* get Total records */
 	count
 	local total_records = r(N)
 
+	
 	/* get number and percent of hit&runs */
 	count if hitandrun == 1
 	local hitandrun_amt = r(N)
 	local hitandrun_pct = `hitandrun_amt'/`total_records'
+	
 	
 	/* search and record duplicates */
 	// find and group records with the same date
@@ -280,4 +283,15 @@ if "$quality" == "on" {
 	//   traditional values expected in the duplicates variable (contained in
 	//   duplicates_amt)
 	duplicates tag duplicates_grouped if duplicates_grouped != 0, gen(duplicates_amt)
+	
+	
+	/* Flag and export all entries with additional info (potential issues) */
+	gen potential_issues = 0
+	
+	foreach entry in additionalinfo {
+		gen additionalinfo_lower = lower(`entry')
+		replace potential_issues = 1 if (additionalinfo_lower != "" & additionalinfo_lower != "none" & additionalinfo_lower != "no" & additionalinfo_lower != "n/a")
+	}
+	
+	drop additionalinfo_lower
 }
