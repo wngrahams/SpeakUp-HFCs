@@ -140,13 +140,19 @@ if "$quality" == "on" {
 	/* get Total records */
 	count
 	local total_records = r(N)
-
+	
+	// export to excel
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
+	putexcel C4 = `total_records'
 	
 	/* get number and percent of hit&runs */
 	count if hitandrun == 1
 	local hitandrun_amt = r(N)
 	local hitandrun_pct = `hitandrun_amt'/`total_records'
 	
+	// export to excel
+	putexcel C6 = `hitandrun_amt'
+	putexcel C7 = (`hitandrun_pct'), nformat(percent_d2)
 	
 	/* search and record duplicates */
 	// find and group records with the same date
@@ -284,6 +290,8 @@ if "$quality" == "on" {
 	//   duplicates_amt)
 	duplicates tag duplicates_grouped if duplicates_grouped != 0, gen(duplicates_amt)
 	
+	// export to excel
+	
 	
 	/* Flag and export all entries with additional info (potential issues) */
 	gen potential_issues = 0
@@ -298,4 +306,6 @@ if "$quality" == "on" {
 	}
 	// drop uneeded var
 	drop additionalinfo_lower
+	
+	putexcel close
 }
