@@ -36,6 +36,7 @@ global precleaning "off"
 global enums "off"
 global pairs "off"
 global quality "on"
+global debug "off"
 
 *Date
 global today = c(current_date)
@@ -192,29 +193,41 @@ if "$quality" == "on" {
 		while `j' <= (`i' + `amt_to_check') {
 			local k = 1
 			while `k' <= psvcount[`j'] {
-				// local psvlist_size : list sizeof `psvlist'
 				local psvregistration_k_j = psvregistration`k'[`j']
-				display "psvregistration`k'[`j']: `psvregistration_k_j'"
+				
+				if "$debug" == "on" {
+					display "psvregistration`k'[`j']: `psvregistration_k_j'" 
+				}
+				
 				if (`psvlist_size' == 0) {
-					display "size of the list is 0, add `psvregistration_k_j' to list"
 					local psvlist `psvregistration_k_j'
-					//local psvlist_size : list sizeof `psvlist'
 					local psvlist_size = `psvlist_size' + 1
-					display "list is now `psvlist'"
-					display "size is now `psvlist_size'"
+					
+					if ("$debug" == "on") {
+						display "size of the list is 0, add `psvregistration_k_j' to list"
+						display "list is now `psvlist'"
+						display "size is now `psvlist_size'"
+					}
 				}
 				else if !(`: list psvregistration_k_j in psvlist') {
-					display "`psvregistration_k_j' is not on the list; add it"
 					local psvlist `psvlist' `psvregistration_k_j'
 					// local psvlist_size : list sizeof `psvlist'
 					local psvlist_size = `psvlist_size' + 1
-					display "list is now `psvlist'"
-					display "size is now `psvlist_size'"
+					
+					if ("$debug" == "on") {
+						display "`psvregistration_k_j' is not on the list; add it"
+						display "list is now `psvlist'"
+						display "size is now `psvlist_size'"
+					}
 				}
 				else {
-					display "`psvregistration_k_j' is already on the list!!"
 					local group_ct = same_date_grouped[`i']
-					display "putting '`group_ct'' in record `j'"
+					
+					if ("$debug" == "on") {
+						display "`psvregistration_k_j' is already on the list!!"
+						display "putting '`group_ct'' in record `j'"
+					}
+					
 					replace duplicates_grouped = same_date_grouped[`i'] if _n == `j'
 					local position : list posof "`psvregistration_k_j'" in psvlist
 					local psv_counter = 0
@@ -223,7 +236,11 @@ if "$quality" == "on" {
 						local psv_counter = `psv_counter' + psvcount[`m']
 						if (`psv_counter' >= `position') {
 							local group_ct = same_date_grouped[`i']
-							display "putting '`group_ct'' in record `m'"
+							
+							if "$debug" == "on" {
+								display "putting '`group_ct'' in record `m'" 
+							}
+							
 							replace duplicates_grouped = same_date_grouped[`i'] if _n == `m'
 							continue, break
 						}
@@ -235,7 +252,6 @@ if "$quality" == "on" {
 		}
 		local i = `i' + `amt_to_check' + 1
 	}
-	
 	
 	duplicates tag duplicates_grouped if duplicates_grouped != 0, gen(duplicates_amt)
 }
