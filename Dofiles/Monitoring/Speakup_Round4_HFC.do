@@ -156,7 +156,9 @@ if "$quality" == "on" {
 	putexcel C7 = (`hitandrun_pct'), nformat(percent_d2)	
 	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if hitandrun == 1, sheetmodify sheet("_export H+R ") firstrow(var)
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export H+R ")
-	putexcel (AA1:AA10) fpattern( , , lightpink)
+	local hr_highlight_length = `hitandrun_amt'+1
+	putexcel (AA1:AA`hr_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
+	putexcel (A1:FF1), bold border(bottom, thin, black)
 	
 	
 	/* search and record duplicates */
@@ -299,10 +301,12 @@ if "$quality" == "on" {
 	summ duplicates_amt
 	local max_dups = r(max)
 	local duplicate_count = 0
+	local dups_incl_originals = 0
 	forvalues i = 1/`max_dups' {
 		count if duplicates_amt == `i'
 		local overcount = r(N)
 		local duplicate_count = `duplicate_count' + `overcount' - (`overcount'/(`i' + 1))
+		local dups_incl_originals = `dups_incl_originals' + `overcount'
 	}
 	
 	local duplicate_pct = `duplicate_count'/`total_records'
@@ -314,6 +318,10 @@ if "$quality" == "on" {
 	putexcel D9 = "this is the amount of records that are likely duplicates of another"
 	putexcel C10 = (`duplicate_pct'), nformat(percent_d2)	
 	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if duplicates_grouped != 0, sheetmodify sheet("_export dups") firstrow(var)
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export dups")
+	local dup_highlight_length = `dups_incl_originals'+1
+	putexcel (R1:U`dup_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
+	putexcel (A1:FF1), bold border(bottom, thin, black)
 	
 	
 	/* Flag and export all entries with additional info (potential issues) */
@@ -340,6 +348,10 @@ if "$quality" == "on" {
 	putexcel C12 = `flags_count'
 	putexcel C13 = `flags_pct', nformat(percent_d2)
 	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if potential_issues==1, sheetmodify sheet("_export flags") firstrow(var)
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export flags")
+	local flags_highlight_length = `flags_count' + 1
+	putexcel (AM1:AM`flags_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
+	putexcel (A1:FF1), bold border(bottom, thin, black)
 	
 	putexcel close
 }
