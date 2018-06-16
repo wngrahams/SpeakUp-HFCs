@@ -288,10 +288,14 @@ if "$quality" == "on" {
 	/* Flag and export all entries with additional info (potential issues) */
 	gen potential_issues = 0
 	
+	// iterate through each entry in additionalinfo
 	foreach entry in additionalinfo {
+		// generate a new variable that is equivalent to additionalinfo but 
+		//   ensures all values are lowercase for easy comparison
 		gen additionalinfo_lower = lower(`entry')
+		// flag entries that may contain something worth checking
 		replace potential_issues = 1 if (additionalinfo_lower != "" & additionalinfo_lower != "none" & additionalinfo_lower != "no" & additionalinfo_lower != "n/a")
 	}
-	
+	// drop uneeded var
 	drop additionalinfo_lower
 }
