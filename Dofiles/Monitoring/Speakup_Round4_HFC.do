@@ -135,45 +135,113 @@ if "$quality" == "on" {
 
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
-	// get Total records
+	/* get Total records */
 	count
 	local total_records = r(N)
-	// dis `total_records'
 
-	// get number and percent of hit&runs
+	/* get number and percent of hit&runs */
 	count if hitandrun == 1
 	local hitandrun_amt = r(N)
-	// dis `hitandrun_amt'
 	local hitandrun_pct = `hitandrun_amt'/`total_records'
-	// dis `hitandrun_pct'
 	
-	// search and record duplicates
-	duplicates tag date, gen(same_date)
+	/* search and record duplicates */
+	// find and group records with the same date
+	duplicates tag date, gen(same_date)  
 	sort date
 	
 	gen same_date_grouped = 0
 	
-	local date_duplicate_num = 0
+	local amt_to_check = 0
 	local counter = 0
 	local i = 1
-	while `i' <= `total_records' {
 	
-		if same_date[`i'] != 0 {
-			local date_duplicate_num = same_date[`i']
+	// iterate through all records, giving each group of records on the 
+	//   same date a distinct value for same_date grouped
+	while `i' <= `total_records' {
+		// if the record has another on the same date...
+		if same_date[`i'] != 0 {  
+			// get number of records on same date
+			local amt_to_check = same_date[`i']  
 			local counter = `counter' + 1
 			
 			local j = `i'
-			while `j' <= (`i' + `date_duplicate_num') {
+			// assign each record on the same date a matching value in
+			//   same_date_grouped
+			while `j' <= (`i' + `amt_to_check') {
 				replace same_date_grouped = `counter' if _n == `j'
 				local j = `j' + 1
 			}
 			
-			local i = `i' + `date_duplicate_num' + 1
+			local i = `i' + `amt_to_check' + 1
 		}
 		else {
 			local i = `i' + 1
 		}
 	}
 	
+	gsort - same_date_grouped psvcount
+	gen duplicates_grouped = 0
+	gen duplicates_amt = 0
+	local i = 1
+	while `i' <= `total_records' & same_date_grouped[`i'] != 0 {
+		local grouping = same_date_grouped[`i']
+		local amt_to_check = same_date[`i']
+		
+		local psvlist
+		local psvlist_size = 0
+		local j = `i'
+		while `j' <= (`i' + `amt_to_check') {
+			local k = 1
+			while `k' <= psvcount[`j'] {
+				// local psvlist_size : list sizeof `psvlist'
+				local psvregistration_k_j = psvregistration`k'[`j']
+				display "psvregistration`k'[`j']: `psvregistration_k_j'"
+				if (`psvlist_size' == 0) {
+					display "size of the list is 0, add `psvregistration_k_j' to list"
+					local psvlist `psvregistration_k_j'
+					//local psvlist_size : list sizeof `psvlist'
+					local psvlist_size = `psvlist_size' + 1
+					display "list is now `psvlist'"
+					display "size is now `psvlist_size'"
+				}
+				else if !(`: list psvregistration_k_j in psvlist') {
+					display "`psvregistration_k_j' is not on the list; add it"
+					local psvlist `psvlist' `psvregistration_k_j'
+					// local psvlist_size : list sizeof `psvlist'
+					local psvlist_size = `psvlist_size' + 1
+					display "list is now `psvlist'"
+					display "size is now `psvlist_size'"
+				}
+				else {
+					display "`psvregistration_k_j' is already on the list!!"
+					replace duplicates_grouped = same_date_grouped[`i'] if _n == `j'
+					local position : list posof "`psvregistration_k_j'" in psvlist
+					local psv_counter = 0
+					forvalues m = `i'/`j' {
+						local psv_counter = `psv_counter' + psvcount[`m']
+						if (`psv_counter' >= `position') {
+							replace duplicates_grouped = same_date_grouped[`i'] if _n == `m'
+						}
+						local m = `j' + 1
+					}
+				}
+				local k = `k' + 1
+			}
+			local j = `j' + 1
+		}
+		// display "`psvlist'"
+		
+		/*local max_psv = psvcount[`i']
 	
+	
+		
+		gen psvreg_list = ""
+		
+		local j = `i'
+		while `j' <= (`i' + `amt_to_check') {
+			replace psvreg_list
+		}*/
+	
+		local i = `i' + `amt_to_check' + 1
+	}
 }
