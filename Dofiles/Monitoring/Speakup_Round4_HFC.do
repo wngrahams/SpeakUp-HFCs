@@ -183,15 +183,25 @@ if "$quality" == "on" {
 	gsort - same_date_grouped psvcount
 	gen duplicates_grouped = 0
 	local i = 1
+	
+	// iterate through records until reaching the records for which they have no
+	//   duplicate dates
 	while `i' <= `total_records' & same_date_grouped[`i'] != 0 {
-		local grouping = same_date_grouped[`i']
-		local amt_to_check = same_date[`i']
-		
+	
+		local amt_to_check = same_date[`i']	
 		local psvlist
 		local psvlist_size = 0
 		local j = `i'
+		
+		// iterate through groups of records that were determined to have the 
+		//   same date
 		while `j' <= (`i' + `amt_to_check') {
+		
 			local k = 1
+			
+			// for each of these records, add their psv registration numbers 
+			//   to a list. If one of their psv registration numbers is already
+			//   on the list, mark the matching records as duplicates
 			while `k' <= psvcount[`j'] {
 				local psvregistration_k_j = psvregistration`k'[`j']
 				
@@ -199,6 +209,8 @@ if "$quality" == "on" {
 					display "psvregistration`k'[`j']: `psvregistration_k_j'" 
 				}
 				
+				// if there is nothing in the list, add the first psv 
+				//   registration number
 				if (`psvlist_size' == 0) {
 					local psvlist `psvregistration_k_j'
 					local psvlist_size = `psvlist_size' + 1
@@ -209,6 +221,9 @@ if "$quality" == "on" {
 						display "size is now `psvlist_size'"
 					}
 				}
+				
+				// if the list is not empty but the psv registration number is
+				//   not found on the list, add it to the list
 				else if !(`: list psvregistration_k_j in psvlist') {
 					local psvlist `psvlist' `psvregistration_k_j'
 					// local psvlist_size : list sizeof `psvlist'
@@ -220,6 +235,9 @@ if "$quality" == "on" {
 						display "size is now `psvlist_size'"
 					}
 				}
+				
+				// if the psv registration number IS on the list, mark the 
+				//   records as duplicates
 				else {
 					local group_ct = same_date_grouped[`i']
 					
@@ -232,6 +250,10 @@ if "$quality" == "on" {
 					local position : list posof "`psvregistration_k_j'" in psvlist
 					local psv_counter = 0
 					
+					// search the list for the matching psv registration number
+					//   and use its position to determine which of the other
+					//   records with the same date is the one with the matching
+					//   psv registration number
 					forvalues m = `i'/`j' {
 						local psv_counter = `psv_counter' + psvcount[`m']
 						if (`psv_counter' >= `position') {
@@ -253,5 +275,9 @@ if "$quality" == "on" {
 		local i = `i' + `amt_to_check' + 1
 	}
 	
+	// using the previously determined and marked duplicate records, use
+	//   the duplicates function to generate a variable containing the 
+	//   traditional values expected in the duplicates variable (contained in
+	//   duplicates_amt)
 	duplicates tag duplicates_grouped if duplicates_grouped != 0, gen(duplicates_amt)
 }
