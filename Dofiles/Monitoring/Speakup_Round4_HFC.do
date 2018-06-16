@@ -181,7 +181,6 @@ if "$quality" == "on" {
 	
 	gsort - same_date_grouped psvcount
 	gen duplicates_grouped = 0
-	gen duplicates_amt = 0
 	local i = 1
 	while `i' <= `total_records' & same_date_grouped[`i'] != 0 {
 		local grouping = same_date_grouped[`i']
@@ -214,34 +213,29 @@ if "$quality" == "on" {
 				}
 				else {
 					display "`psvregistration_k_j' is already on the list!!"
+					local group_ct = same_date_grouped[`i']
+					display "putting '`group_ct'' in record `j'"
 					replace duplicates_grouped = same_date_grouped[`i'] if _n == `j'
 					local position : list posof "`psvregistration_k_j'" in psvlist
 					local psv_counter = 0
+					
 					forvalues m = `i'/`j' {
 						local psv_counter = `psv_counter' + psvcount[`m']
 						if (`psv_counter' >= `position') {
+							local group_ct = same_date_grouped[`i']
+							display "putting '`group_ct'' in record `m'"
 							replace duplicates_grouped = same_date_grouped[`i'] if _n == `m'
+							continue, break
 						}
-						local m = `j' + 1
 					}
 				}
 				local k = `k' + 1
 			}
 			local j = `j' + 1
 		}
-		// display "`psvlist'"
-		
-		/*local max_psv = psvcount[`i']
-	
-	
-		
-		gen psvreg_list = ""
-		
-		local j = `i'
-		while `j' <= (`i' + `amt_to_check') {
-			replace psvreg_list
-		}*/
-	
 		local i = `i' + `amt_to_check' + 1
 	}
+	
+	
+	duplicates tag duplicates_grouped if duplicates_grouped != 0, gen(duplicates_amt)
 }
