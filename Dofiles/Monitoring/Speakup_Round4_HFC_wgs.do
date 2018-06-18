@@ -242,7 +242,6 @@ if "$quality" == "on" {
 				//   not found on the list, add it to the list
 				else if !(`: list psvregistration_k_j in psvlist') {
 					local psvlist `psvlist' `psvregistration_k_j'
-					// local psvlist_size : list sizeof `psvlist'
 					local psvlist_size = `psvlist_size' + 1
 					
 					if ("$debug" == "on") {
