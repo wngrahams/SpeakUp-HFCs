@@ -32,11 +32,11 @@ global FinalFolder "Data/Final"
 global OutputFolder "Monitoring/Round 4 monitoring"	
 	
 *Switches
-global precleaning "off"
+global precleaning "on"
 global enums "off"
 global pairs "off"
 global quality "on"
-global debug "off"
+global debug "on"
 
 *Date
 global today = c(current_date)
@@ -158,7 +158,7 @@ if "$quality" == "on" {
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export H+R ")
 	local hr_highlight_length = `hitandrun_amt'+1
 	putexcel (AA1:AA`hr_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
-	putexcel (A1:FF1), bold border(bottom, thin, black)
+	putexcel (A1:GJ1), bold border(bottom, thin, black)
 	
 	
 	/* search and record duplicates */
@@ -219,70 +219,75 @@ if "$quality" == "on" {
 			//   to a list. If one of their psv registration numbers is already
 			//   on the list, mark the matching records as duplicates
 			while `k' <= psvcount[`j'] {
+			
 				local psvregistration_k_j = psvregistration`k'[`j']
-				
 				if "$debug" == "on" {
-					display "psvregistration`k'[`j']: `psvregistration_k_j'" 
+						display "psvregistration`k'[`j']: `psvregistration_k_j'" 
 				}
 				
-				// if there is nothing in the list, add the first psv 
-				//   registration number
-				if (`psvlist_size' == 0) {
-					local psvlist `psvregistration_k_j'
-					local psvlist_size = `psvlist_size' + 1
-					
-					if ("$debug" == "on") {
-						display "size of the list is 0, add `psvregistration_k_j' to list"
-						display "list is now `psvlist'"
-						display "size is now `psvlist_size'"
-					}
-				}
+				if ("`psvregistration_k_j'" != "") {
 				
-				// if the list is not empty but the psv registration number is
-				//   not found on the list, add it to the list
-				else if !(`: list psvregistration_k_j in psvlist') {
-					local psvlist `psvlist' `psvregistration_k_j'
-					local psvlist_size = `psvlist_size' + 1
 					
-					if ("$debug" == "on") {
-						display "`psvregistration_k_j' is not on the list; add it"
-						display "list is now `psvlist'"
-						display "size is now `psvlist_size'"
-					}
-				}
-				
-				// if the psv registration number IS on the list, mark the 
-				//   records as duplicates
-				else {
-					local group_ct = same_date_grouped[`i']
 					
-					if ("$debug" == "on") {
-						display "`psvregistration_k_j' is already on the list!!"
-						display "putting '`group_ct'' in record `j'"
-					}
-					
-					replace duplicates_grouped = same_date_grouped[`i'] if _n == `j'
-					local position : list posof "`psvregistration_k_j'" in psvlist
-					local psv_counter = 0
-					
-					// search the list for the matching psv registration number
-					//   and use its position to determine which of the other
-					//   records with the same date is the one with the matching
-					//   psv registration number
-					forvalues m = `i'/`j' {
-						local psv_counter = `psv_counter' + psvcount[`m']
-						if (`psv_counter' >= `position') {
-							local group_ct = same_date_grouped[`i']
-							
-							if "$debug" == "on" {
-								display "putting '`group_ct'' in record `m'" 
-							}
-							
-							replace duplicates_grouped = same_date_grouped[`i'] if _n == `m'
-							continue, break
+					// if there is nothing in the list, add the first psv 
+					//   registration number
+					if (`psvlist_size' == 0) {
+						local psvlist `psvregistration_k_j'
+						local psvlist_size = `psvlist_size' + 1
+						
+						if ("$debug" == "on") {
+							display "size of the list is 0, add `psvregistration_k_j' to list"
+							display "list is now `psvlist'"
+							display "size is now `psvlist_size'"
 						}
 					}
-				}
+					
+					// if the list is not empty but the psv registration number is
+					//   not found on the list, add it to the list
+					else if !(`: list psvregistration_k_j in psvlist') {
+						local psvlist `psvlist' `psvregistration_k_j'
+						local psvlist_size = `psvlist_size' + 1
+						
+						if ("$debug" == "on") {
+							display "`psvregistration_k_j' is not on the list; add it"
+							display "list is now `psvlist'"
+							display "size is now `psvlist_size'"
+						}
+					}
+					
+					// if the psv registration number IS on the list, mark the 
+					//   records as duplicates
+					else {
+						local group_ct = same_date_grouped[`i']
+						
+						if ("$debug" == "on") {
+							display "`psvregistration_k_j' is already on the list!!"
+							display "putting '`group_ct'' in record `j'"
+						}
+						
+						replace duplicates_grouped = same_date_grouped[`i'] if _n == `j'
+						local position : list posof "`psvregistration_k_j'" in psvlist
+						local psv_counter = 0
+						
+						// search the list for the matching psv registration number
+						//   and use its position to determine which of the other
+						//   records with the same date is the one with the matching
+						//   psv registration number
+						forvalues m = `i'/`j' {
+							local psv_counter = `psv_counter' + psvcount[`m']
+							if (`psv_counter' >= `position') {
+								local group_ct = same_date_grouped[`i']
+								
+								if "$debug" == "on" {
+									display "putting '`group_ct'' in record `m'" 
+								}
+								
+								replace duplicates_grouped = same_date_grouped[`i'] if _n == `m'
+								continue, break
+							}
+						}
+					}
+				}	
 				local k = `k' + 1
 			}
 			local j = `j' + 1
@@ -320,7 +325,7 @@ if "$quality" == "on" {
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export dups")
 	local dup_highlight_length = `dups_incl_originals'+1
 	putexcel (R1:U`dup_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
-	putexcel (A1:FF1), bold border(bottom, thin, black)
+	putexcel (A1:GJ1), bold border(bottom, thin, black)
 	
 	
 	/* Flag and export all entries with additional info (potential issues) */
@@ -350,7 +355,7 @@ if "$quality" == "on" {
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export flags")
 	local flags_highlight_length = `flags_count' + 1
 	putexcel (AM1:AM`flags_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
-	putexcel (A1:FF1), bold border(bottom, thin, black)
+	putexcel (A1:GJ1), bold border(bottom, thin, black)
 	
 	putexcel close
 }
