@@ -331,15 +331,16 @@ if "$quality" == "on" {
 	/* Flag and export all entries with additional info (potential issues) */
 	gen potential_issues = 0
 	
-	// iterate through each entry in additionalinfo
-	foreach entry in additionalinfo {
-		// generate a new variable that is equivalent to additionalinfo but 
-		//   ensures all values are lowercase for easy comparison
-		gen additionalinfo_lower = lower(`entry')
-		replace additionalinfo_lower = subinstr(additionalinfo_lower, ".", "", .)
-		// flag entries that may contain something worth checking
-		replace potential_issues = 1 if (additionalinfo_lower != "" & additionalinfo_lower != "none" & additionalinfo_lower != "no" & additionalinfo_lower != "n/a" & additionalinfo_lower != "nothing")
-	}
+	// generate a new variable that is equivalent to additionalinfo but 
+	//   ensures all values are lowercase for easy comparison
+	gen additionalinfo_lower = lower(additionalinfo)
+	
+	// remove punctuation
+	replace additionalinfo_lower = subinstr(additionalinfo_lower, ".", "", .)
+	
+	// flag entries that may contain something worth checking
+	replace potential_issues = 1 if (additionalinfo_lower != "" & additionalinfo_lower != "none" & additionalinfo_lower != "no" & additionalinfo_lower != "n/a" & additionalinfo_lower != "nothing")
+	
 	// drop uneeded var
 	drop additionalinfo_lower
 	
@@ -356,7 +357,7 @@ if "$quality" == "on" {
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export flags")
 	local flags_highlight_length = `flags_count' + 1
 	putexcel (AM1:AM`flags_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
-	putexcel (A1:GJ1), bold border(bottom, thin, black)
+	putexcel (A1:GK1), bold border(bottom, thin, black)
 	
 	putexcel close
 }
