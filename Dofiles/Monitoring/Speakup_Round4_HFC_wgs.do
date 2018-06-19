@@ -336,8 +336,9 @@ if "$quality" == "on" {
 		// generate a new variable that is equivalent to additionalinfo but 
 		//   ensures all values are lowercase for easy comparison
 		gen additionalinfo_lower = lower(`entry')
+		replace additionalinfo_lower = subinstr(additionalinfo_lower, ".", "", .)
 		// flag entries that may contain something worth checking
-		replace potential_issues = 1 if (additionalinfo_lower != "" & additionalinfo_lower != "none" & additionalinfo_lower != "no" & additionalinfo_lower != "n/a")
+		replace potential_issues = 1 if (additionalinfo_lower != "" & additionalinfo_lower != "none" & additionalinfo_lower != "no" & additionalinfo_lower != "n/a" & additionalinfo_lower != "nothing")
 	}
 	// drop uneeded var
 	drop additionalinfo_lower
