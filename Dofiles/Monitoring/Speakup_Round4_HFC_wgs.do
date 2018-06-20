@@ -1,6 +1,5 @@
 /******************************************************************************
 			High Frequency Checks for Speakup Round 4 Data Collection
-
 Author: Béatrice Leydier
 Email: bl517@georgetown.edu
 Date: 06/12/2018
@@ -357,7 +356,7 @@ if "$quality" == "on" {
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export flags")
 	local flags_highlight_length = `flags_count' + 1
 	putexcel (AM1:AM`flags_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
-	putexcel (A1:GK1), bold border(bottom, thin, black)
+	putexcel (A1:GJ1), bold border(bottom, thin, black)
 	
 	putexcel close
 }
