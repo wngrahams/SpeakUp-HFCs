@@ -142,11 +142,11 @@ if "$quality" == "on" {
 	gen date_num = substr("$today", 1, 2)
 	destring date_num, replace
 	local export_col = char(date_num)
-	if (date_num + 48) <= 90 {
-		local export_col = char(date_num + 48)
+	if (date_num + 53) <= 90 {
+		local export_col = char(date_num + 53)
 	}
 	else {
-		local export_col = char(date_num + 48 - 26)
+		local export_col = char(date_num + 53 - 26)
 		local export_col = "A" + "`export_col'"
 	}
 	drop date_num
@@ -154,15 +154,19 @@ if "$quality" == "on" {
 	// export to excel
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
 	putexcel A2 = "Summary of Potential Errors", bold
-	putexcel C3 = "19 June 2018", bold border(bottom, medium, black)
-	putexcel D3 = "20 June 2018", bold border(bottom, medium, black)
-	putexcel E3 = "21 June 2018", bold border(bottom, medium, black)
+	putexcel C3 = "14 June 2018", bold border(bottom, medium, black)
+	putexcel D3 = "15 June 2018", bold border(bottom, medium, black)
+	putexcel E3 = "16 June 2018", bold border(bottom, medium, black)
+	putexcel F3 = "17 June 2018", bold border(bottom, medium, black)
+	putexcel G3 = "18 June 2018", bold border(bottom, medium, black)
+	putexcel H3 = "19 June 2018", bold border(bottom, medium, black)
+	putexcel I3 = "20 June 2018", bold border(bottom, medium, black)
 	putexcel (B4:B13), border(right, medium, black)
 	if ("$debug" == "on") {
 		disp "Today: $today"
 		disp "Exporting summaries to column `export_col'"
 	}
-	putexcel `export_col'3 = "$today", bold border(bottom, medium, black) font("Calibri (Body)", 11, red)
+	putexcel `export_col'3 = "$today", bold border(bottom, medium, black) font("Calibri (Body)", 11, black)
 	putexcel `export_col'4 = `total_records'
 	
 	
@@ -216,7 +220,7 @@ if "$quality" == "on" {
 		}
 	}
 	
-	gsort - same_date_grouped psvcount
+	gsort - same_date_grouped psvcount psvregistration1
 	gen duplicates_grouped = 0
 	local i = 1
 	
@@ -289,12 +293,22 @@ if "$quality" == "on" {
 						local position : list posof "`psvregistration_k_j'" in psvlist
 						local psv_counter = 0
 						
+						if "$debug" == "on" {
+							display "position: `position'"
+						}
+						
 						// search the list for the matching psv registration number
 						//   and use its position to determine which of the other
 						//   records with the same date is the one with the matching
 						//   psv registration number
 						forvalues m = `i'/`j' {
 							local psv_counter = `psv_counter' + psvcount[`m']
+							
+							if "$debug" == "on" {
+								display "psv_counter: `psv_counter'"
+								display "m: `m'"
+							}
+							
 							if (`psv_counter' >= `position') {
 								local group_ct = same_date_grouped[`i']
 								
@@ -306,6 +320,11 @@ if "$quality" == "on" {
 								continue, break
 							}
 						}
+						
+						// then add the duplicate to the list anyways so future
+						//   counts are consistent
+						local psvlist `psvlist' `psvregistration_k_j'
+						local psvlist_size = `psvlist_size' + 1
 					}
 				}	
 				local k = `k' + 1
@@ -323,6 +342,7 @@ if "$quality" == "on" {
 	
 	preserve
 	drop if duplicates_grouped == 0
+	gsort - duplicates_grouped psvregistration1 submissiondate
 	
 	// get number and percent of duplicates
 	count
