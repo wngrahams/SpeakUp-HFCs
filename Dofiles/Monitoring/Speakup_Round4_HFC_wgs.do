@@ -132,78 +132,105 @@ if "$enums" == "on" {
 *******************************************************************************/	
 
 if "$quality" == "on" {	
-
-	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
-	if "$debug" == "on" {
-		disp "Right before for loop"
+	// Turn this global on to posthumously perform the HFC for previous dates,
+	//   (may be slow)
+	global fill_in_previous_dates "on"
+
+	local loop_end = 1
+	if ("$fill_in_previous_dates" == "on") {
+		gen date_num = substr("$today", 1, 2)
+		destring date_num, replace
+		local loop_end = date_num - 13
+		if ("$debug" == "on") {
+			disp "Previous dates will be filled in"
+			disp "Number of loops to be performed: `loop_end'"
+		}
 	}
 	
-	forvalues z = 1/7 {
+	forvalues HFC_loop_num = 1/`loop_end' {
 	
-		if "$debug" == "on" {
-			disp "Inside for loop (loop `z')"
-		}
-		
 		use "$TempFolder/Speakup_Round4_preclean.dta", clear
-		if (`z' == 1) {
+		if (`HFC_loop_num' == 1) {
 			preserve
 		}
 		
-		gen sub_date_num = dofc(submissiondate)
-		format sub_date_num %td
-		replace sub_date_num = day(sub_date_num)
-		if "$debug" == "on" {
-			disp "sum_date_num generated"
+		if ("$fill_in_previous_dates" == "on") {
+			gen sub_date_num = dofc(submissiondate)
+			format sub_date_num %td
+			gen sub_date_day = day(sub_date_num)
+			gen sub_date_month = month(sub_date_num)
+			
+			// this is only valid for June and July with a start date of June 14
+			// this should be changed if this code is used for another purpose
+			if (`HFC_loop_num' <= 17) {
+				drop if sub_date_day > `HFC_loop_num' + 13 | sub_date_month > 6
+			}
+			else {
+				drop if sub_date_day > `HFC_loop_num' - 17 & sub_date_month == 7
+			}
+			
+			drop sub_date_day sub_date_month sub_date_num
 		}
-// 		tostring sub_date_num, replace format("%20.0f")
-// 		if "$debug" == "on" {
-// 			disp "sub_date_num converted to string"
-// 		}
-// 		replace sub_date_num = substr(sub_date_num, 1, 2)
-// 		if "$debug" == "on" {
-// 			disp "sub_date_num replaced with first two digits"
-// 		}
-// 		destring sub_date_num, replace
-// 		if "$debug" == "on" {
-// 			disp "sub_date_num converted back to int"
-// 		}
-		drop if sub_date_num > `z' + 13
 	
 		/* get Total records */
 		count
 		local total_records = r(N)
 		
-		gen date_num = substr("$today", 1, 2)
-		destring date_num, replace
-		local export_col = char(date_num)
-		if (date_num + 53) <= 90 {
-			local export_col = char(date_num + 53)
+		local export_col = "A"
+		
+		if ("$fill_in_previous_dates" == "on") {
+			local export_col = char(`HFC_loop_num' + 13 + 53)
 		}
 		else {
-			local export_col = char(date_num + 53 - 26)
-			local export_col = "A" + "`export_col'"
+			gen date_num = substr("$today", 1, 2)
+			destring date_num, replace
+			local export_col = char(date_num)
+			if (date_num + 53) <= 90 {
+				local export_col = char(date_num + 53)
+			}
+			else {
+				local export_col = char(date_num + 53 - 26)
+				local export_col = "A" + "`export_col'"
+			}
+			drop date_num
 		}
-		drop date_num
-		
-		local export_col = char(`z' + 13 + 53)
 		
 		// export to excel
 		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
-		putexcel A2 = "Summary of Potential Errors", bold
-		putexcel C3 = "14 June 2018", bold border(bottom, medium, black) overwritefmt
-		putexcel D3 = "15 June 2018", bold border(bottom, medium, black) overwritefmt
-		putexcel E3 = "16 June 2018", bold border(bottom, medium, black) overwritefmt
-		putexcel F3 = "17 June 2018", bold border(bottom, medium, black) overwritefmt
-		putexcel G3 = "18 June 2018", bold border(bottom, medium, black) overwritefmt
-		putexcel H3 = "19 June 2018", bold border(bottom, medium, black) overwritefmt
-		putexcel I3 = "20 June 2018", bold border(bottom, medium, black) overwritefmt
-		putexcel (B4:B13), border(right, medium, black)
+		if (`HFC_loop_num' == `loop_end') {
+			putexcel A2 = "Summary of Potential Errors", bold
+// 			putexcel C3 = "14 June 2018", bold border(bottom, medium, black) overwritefmt
+// 			putexcel D3 = "15 June 2018", bold border(bottom, medium, black) overwritefmt
+// 			putexcel E3 = "16 June 2018", bold border(bottom, medium, black) overwritefmt
+// 			putexcel F3 = "17 June 2018", bold border(bottom, medium, black) overwritefmt
+// 			putexcel G3 = "18 June 2018", bold border(bottom, medium, black) overwritefmt
+// 			putexcel H3 = "19 June 2018", bold border(bottom, medium, black) overwritefmt
+// 			putexcel I3 = "20 June 2018", bold border(bottom, medium, black) overwritefmt
+			putexcel (B4:B13), border(right, medium, black)
+		}
 		if ("$debug" == "on") {
 			disp "Today: $today"
 			disp "Exporting summaries to column `export_col'"
 		}
-// 		putexcel `export_col'3 = "$today", bold border(bottom, medium, black) font("Calibri (Body)", 11, black) overwritefmt
+		local date_str = ""
+		if ("$fill_in_previous_dates" == "on") {
+			// this is only valid for June and July with a start date of June 14
+			// this should be changed if this code is used for another purpose
+			if (`HFC_loop_num' <= 17) {
+				local temp_date = `HFC_loop_num' + 13
+				local date_str = "`temp_date' June 2018"
+			}
+			else {
+				local temp_date = `HFC_loop_num' -17
+				local date_str = "`temp_date' July 2018"
+			}
+			
+		}
+		else {
+			local date_str = "$today"
+		}
+		putexcel `export_col'3 = "`date_str'", bold border(bottom, medium, black) font("Calibri (Body)", 11, black) overwritefmt
 		putexcel `export_col'4 = `total_records'
 		
 		
@@ -215,11 +242,14 @@ if "$quality" == "on" {
 		// export to excel
 		putexcel `export_col'6 = `hitandrun_amt'
 		putexcel `export_col'7 = (`hitandrun_pct'), nformat(percent_d2)	
-		export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if hitandrun == 1, sheetreplace sheet("_export H+R ") firstrow(var)
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export H+R ")
-		local hr_highlight_length = `hitandrun_amt'+1
-		putexcel (AA1:AA`hr_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
-		putexcel (A1:GJ1), bold border(bottom, thin, black)
+		
+		if (`HFC_loop_num' == `loop_end') {
+			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if hitandrun == 1, sheetreplace sheet("_export H+R ") firstrow(var)
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export H+R ")
+			local hr_highlight_length = `hitandrun_amt'+1
+			putexcel (AA1:AA`hr_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
+			putexcel (A1:GF1), bold border(bottom, thin, black)
+		}
 		
 		/* Flag and export all entries with additional info (potential issues) */
 		gen potential_issues = 0
@@ -246,11 +276,16 @@ if "$quality" == "on" {
 		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
 		putexcel `export_col'12 = `flags_count'
 		putexcel `export_col'13 = `flags_pct', nformat(percent_d2)
-		export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if potential_issues==1, sheetreplace sheet("_export flags") firstrow(var)
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export flags")
-		local flags_highlight_length = `flags_count' + 1
-		putexcel (AM1:AM`flags_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
-		putexcel (A1:GJ1), bold border(bottom, thin, black)
+		
+		if (`HFC_loop_num' == `loop_end') {
+			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if potential_issues==1, sheetreplace sheet("_export flags") firstrow(var)
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export flags")
+			local flags_highlight_length = `flags_count' + 1
+			putexcel (AM1:AM`flags_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
+			putexcel (A1:GH1), bold border(bottom, thin, black)
+		}
+		
+		drop potential_issues
 		
 		
 		/* search and record duplicates */
@@ -289,9 +324,7 @@ if "$quality" == "on" {
 		}
 		
 		gsort - same_date_grouped psvcount psvregistration1
-		display "HERE !!!!"
 		gen duplicates_grouped = 0
-		display "AFTER !!!!"
 		local i = 1
 		
 		// iterate through records until reaching the records for which they have no
@@ -430,79 +463,45 @@ if "$quality" == "on" {
 		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
 		
 		putexcel `export_col'9 = `duplicate_count'
-		putexcel A9 = "This is the amount of records that are likely duplicates of another", italic font("Calibri (Body)", 11, red)
-		putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)	
-		export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if duplicates_grouped != 0, sheetreplace sheet("_export dups") firstrow(var)
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export dups")
-		local dup_highlight_length = `dups_incl_originals'+1
-		putexcel (A1:GJ1), bold border(bottom, thin, black)
+		putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
 		
-		// highlight exported duplicates to make viewing easier
-		local i = 1
-		local highlight_start = 2
-		local loops = 0
-		while `i' <= `dups_incl_originals' {
-			local highlight_length = duplicates_amt[`i']
-			local highlight_end = `highlight_start' + `highlight_length'
-			
-			if ("$debug" == "on") {
-				display "Higlighting from A`highlight_start' to GJ`highlight_end'"
+		if (`HFC_loop_num' == `loop_end') {
+			putexcel A9 = "This is the amount of records that are likely duplicates of another", italic font("Calibri (Body)", 11, red)
+			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if duplicates_grouped != 0, sheetreplace sheet("_export dups") firstrow(var)
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export dups")
+			local dup_highlight_length = `dups_incl_originals'+1
+			putexcel (A1:GJ1), bold border(bottom, thin, black)
+		
+			// highlight exported duplicates to make viewing easier
+			local i = 1
+			local highlight_start = 2
+			local loops = 0
+			while `i' <= `dups_incl_originals' {
+				local highlight_length = duplicates_amt[`i']
+				local highlight_end = `highlight_start' + `highlight_length'
+				
+				if ("$debug" == "on") {
+					display "Higlighting from A`highlight_start' to GJ`highlight_end'"
+				}
+				
+				if (mod(`loops', 2) == 0) {
+					putexcel (A`highlight_start':GJ`highlight_end'), fpattern(solid, "198 242 255", "198 242 255") overwritefmt
+				}
+				else if (mod(`loops', 2) == 1) {
+					putexcel (A`highlight_start':GJ`highlight_end'), fpattern(solid, "255 222 173", "255 222 173") overwritefmt
+				}
+		
+				local i = `i' + duplicates_amt[`i'] + 1
+				local highlight_start = `highlight_end' + 1
+				local loops = `loops' + 1
 			}
-			
-			if (mod(`loops', 2) == 0) {
-				putexcel (A`highlight_start':GJ`highlight_end'), fpattern(solid, "198 242 255", "198 242 255") overwritefmt
-			}
-			else if (mod(`loops', 2) == 1) {
-				putexcel (A`highlight_start':GJ`highlight_end'), fpattern(solid, "255 222 173", "255 222 173") overwritefmt
-			}
-	
-			local i = `i' + duplicates_amt[`i'] + 1
-			local highlight_start = `highlight_end' + 1
-			local loops = `loops' + 1
 		}
 		
 		restore, preserve
 		
-// // 		preserve
-// 		display "AFTER RESTORE !!!!"
-// 		gen sub_date_num = dofc(submissiondate)
-// 		format sub_date_num %td
-// 		replace sub_date_num = day(sub_date_num)
-// 		drop if sub_date_num > `i' + 13
-		
-// 		/* Flag and export all entries with additional info (potential issues) */
-// 		gen potential_issues = 0
-		
-// 		// generate a new variable that is equivalent to additionalinfo but 
-// 		//   ensures all values are lowercase for easy comparison
-// 		gen additionalinfo_lower = lower(additionalinfo)
-		
-// 		// remove punctuation
-// 		replace additionalinfo_lower = subinstr(additionalinfo_lower, ".", "", .)
-		
-// 		// flag entries that may contain something worth checking
-// 		replace potential_issues = 1 if (additionalinfo_lower != "" & additionalinfo_lower != "none" & additionalinfo_lower != "no" & additionalinfo_lower != "n/a" & additionalinfo_lower != "nothing")
-		
-// 		// drop uneeded var
-// 		drop additionalinfo_lower
-		
-// 		// get counts
-// 		count if potential_issues == 1
-// 		local flags_count = r(N)
-// 		local flags_pct = `flags_count'/`total_records'
-		
-// 		// export to excel
-// 		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
-// 		putexcel `export_col'12 = `flags_count'
-// 		putexcel `export_col'13 = `flags_pct', nformat(percent_d2)
-// 		export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if potential_issues==1, sheetreplace sheet("_export flags") firstrow(var)
-// 		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export flags")
-// 		local flags_highlight_length = `flags_count' + 1
-// 		putexcel (AM1:AM`flags_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
-// 		putexcel (A1:GJ1), bold border(bottom, thin, black)
-		
-// 		restore, preserve
-		display "END OF THE LOOP !!!"
+		if ("$debug" == "on") {
+			disp "End of loop `HFC_loop_num'"
+		}
 	}
 	
 	putexcel close
