@@ -203,15 +203,12 @@ if "$pairs" == "on" {
 	forvalues i = 1/`team_ct' {
 		local team_to_check `: word `i' of `teams''
 		if (`"`team_to_check'"' != `"I"') {
-			disp "team_to_check: `team_to_check'"
 			count if substr(userid, 1, 1) == `"`team_to_check'"' /// 
 				& substr(userid, 2, 1) != "1"
 			local team_size = r(N)
-			disp "amount: `team_size'"
 			local team_sizes `team_sizes' "`team_size'"
 		}
 	}
-	disp `"`team_sizes'"'
 	
 	local hl_start = 2
 	forvalues i = 2/`team_ct' {
@@ -433,9 +430,28 @@ preserve
 		cell(A4) sheet ("Enums", modify)
 	levelsof userid
 	local linedist = r(r) + 3
+	putexcel (A1:A`linedist'), border(right, thin, black)
 	putexcel (E1:E`linedist'), border(right, thin, black)
 	putexcel (G1:G`linedist'), border(right, thin, black)
 	putexcel (O1:O`linedist'), border(right, thin, black)
+	
+	putexcel (G4:G60), nformat(percent_d2)
+	putexcel (I4:I60), nformat(percent_d2)
+	putexcel (K4:K60), nformat(percent_d2)
+	putexcel (M4:M60), nformat(percent_d2)
+	putexcel (O4:O60), nformat(percent_d2)
+	
+	putexcel F3 = "#"
+	putexcel G3 = "%"
+	putexcel H3 = "#"
+	putexcel I3 = "%"
+	putexcel J3 = "#"
+	putexcel K3 = "%"
+	putexcel L3 = "#"
+	putexcel M3 = "%"
+	putexcel N3 = "#"
+	putexcel O3 = "%"
+	putexcel (A1:O3), bold
 	
 restore
 }
