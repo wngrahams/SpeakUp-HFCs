@@ -744,20 +744,23 @@ if "$quality" == "on" {
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	preserve
 	
+	// Get total number of records (for percent)
 	count
 	local total_records = r(N)
 	
+	// sort by region and ignore capitalization for substations
 	sort region subregion station substation
 	replace substation = lower(substation)
 	
+	// contract to variables of interest
 	contract region subregion station substation
 	rename _freq amount
 	gen percent = (amount/`total_records')
-	format percent %4.1f
 	
 	count
 	local pct_length = r(N) + 1
 	
+	// Export to excel
 	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
 			sheetmodify sheet("Progress") firstrow(var)
 	
