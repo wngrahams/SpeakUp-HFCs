@@ -1,6 +1,6 @@
 /******************************************************************************
 			High Frequency Checks for Speakup Round 4 Data Collection
-Author: Béatrice Leydier
+Author: Béatrice Leydier, William Stubbs
 Email: bl517@georgetown.edu
 Date: 06/12/2018
 Updated: 
@@ -54,7 +54,8 @@ if "$precleaning" == "on" {
 
 use "$RawFolder/Speak Up Round 4 Survey.dta", clear
 
-
+// Drop if survey was started before the beginning of Round 4
+drop if starttime < mdyhms(6, 14, 2018, 00, 00, 00)
 
 *Save
 save "$TempFolder/Speakup_Round4_preclean.dta", replace
