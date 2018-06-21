@@ -84,7 +84,108 @@ save "$TempFolder/Speakup_Round4_preclean.dta", replace
 *******************************************************************************/	
 if "$pairs" == "on" {	
 
+use "$TempFolder/Speakup_Round4_preclean.dta", clear
 
+	preserve
+	format starttime %tcHH:MM:SS
+	format endtime %tcHH:MM:SS
+	
+	// CHOOSE WHICH TEAM IS GRAPHED HERE:
+// 	local team_choice = "E"
+// 	local team_choice = "W"
+// 	local team_choice = "N"
+// 	local team_choice = "C"
+	local team_choice = "K"
+// 	local team_choice = "U"
+// 	local team_choice = "I"
+
+	if ("$debug" == "on") {
+		disp "The chosen team is: `team_choice'"
+	}
+	
+	// select entry date and team
+	gen startdate=dofc(starttime)
+	keep if startdate==mdy(06,18,2018)
+	keep if userid == "`team_choice'1" | userid == "`team_choice'2" | userid == "`team_choice'3" | userid == "`team_choice'4" | userid == "`team_choice'5" | userid == "`team_choice'6" | userid == "`team_choice'7" | userid == "`team_choice'8" | userid == "`team_choice'9" 
+	gen starttime2 = hh(starttime)+mm(starttime)/60+ss(starttime)/3600
+	
+	gen date_HRF = dofc(starttime)
+	format date_HRF %td
+	local title_d = day(date_HRF)
+	local title_m = month(date_HRF)
+	local title_y = year(date_HRF)
+	
+	// generate missing enumerators
+	if "`team_choice'"== "U" {
+		local numobs = _N + 1
+		set obs `numobs'
+		replace userid = "U1" in l
+	}
+	if "`team_choice'"== "E" {
+		local numobs = _N + 1
+		set obs `numobs'
+		replace userid = "E1" in l
+	}
+// 	if "`team_choice'" == "C" {
+// 		drop if userid == "C5" | userid == "C6" 
+// 	}
+// 	if "`team_choice'" == "K" {
+// 		drop if userid == "K4"
+// 	}
+	
+	// generate userid label
+	list userid
+	encode userid, generate (userid2)
+	
+	// pairing enumerators with userid 
+	label list userid2
+	
+	local y_loop = 0
+	/*central*/ 
+	if "`team_choice'"== "C" {
+		label define userid2 1 "Rosemary A." 2 "Martin R.E." 3 "Flavia N." 4 "Cissy N." 5 "Samuel Besigwa", modify
+		local y_loop = 5
+	}
+	/*Kampala*/
+	if "`team_choice'"== "K" {
+		label define userid2 1 "Joseline N." 2 "Peter K." 3 "Davis M." 4 "Doreen T." 5 "Kenneth Y." 6 "Anita K." 7 "Mary Clare K." 8 "Irene(Atto) N.", modify
+		local y_loop = 8
+	}
+	/*Uganda*/	
+	if "`team_choice'"== "U" {
+		label define userid2 1 "Isaac Kimbugwe" 2 "Justine K." 3 "Rosemary U." 4 "Mercy C." 5 "Isaac Kitabye" 6 "Abdulrazaq(Zach) S." 7 "Pamela N.", modify
+		local y_loop = 7
+	}
+	/*eastern*/
+// 	if "`team_choice'"== "E" {
+// 		label define userid2 1 "" 2 "" 3 "" 4 "" 5 "" 6 "" 7 "", modify
+	local y_loop = 7
+// 	}
+	/*western*/
+	if "`team_choice'"== "W" {
+		label define userid2 1 "Blaise M." 2 "Owen A." 3 "Anthony K." 4 "Christine Kansiime" 5 "Janet M." 6 "Irene(Annet) K." 7 "Edwin B." 8 "Kaunda(Kakaya) E." 9 "Patrick A.", modify
+		local y_loop = 9
+	}
+	/*northern*/
+	if "`team_choice'"== "N" {
+		label define userid2 1 "Julie G." 2 "Samuel Basoga" 3 "Ritah K." 4 "Reagan K." 6 "Allan Erema S." 7 "Kizito K." 8 "Kaunda(Kakaya) E." 9 "Dora A.", modify
+		local y_loop = 9
+	}
+	/*intern*/
+	if "`team_choice'"== "I" {
+		label define userid2 1 "Graham S." 2 "Jacklyn P." 3 "Yuou W.", modify
+		local y_loop = 3
+	}
+	
+	// generate graph
+	twoway scatter userid2 starttime2, title("Survey Distribution for Team `team_choice' on `title_d'/`title_m'/`title_y'") ///
+	yti("Enumerator") xti("Survey Start") xlabel(8 "8:00" 9 "09:00" 10 "10:00" 11 "11:00" 12 "12:00" 13 "13:00" ///
+	14 "14:00" 15 "15:00" 16 "16:00" 17 "17:00") ylabel(1(1)`y_loop', valuelabel angle(30))
+	
+	
+	drop startdate starttime2
+	
+	restore
 }	
 	
 	
