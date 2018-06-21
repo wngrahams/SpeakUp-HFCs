@@ -35,12 +35,12 @@ global FinalFolder "Data/Final"
 global OutputFolder "Monitoring/Round 4 monitoring"	
 	
 *Switches
-global precleaning "off"
-global pairs "off"
+global precleaning "on"
+global pairs "on"
 global enums "off"
 global quality "on"
 global debug "off"
-global fill_in_previous_dates "off" // explanation found in quality section
+global fill_in_previous_dates "on" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -87,23 +87,61 @@ if "$precleaning" == "on" {
 *******************************************************************************/	
 if "$pairs" == "on" {	
 
-use "$TempFolder/Speakup_Round4_preclean.dta", clear
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 
 	preserve 
+	
+	sort userid submissiondate
+// 	contract userid submissiondate
+	
 	gen entrydate = dofc(submissiondate)
 	format entrydate %td
 	sort userid entrydate
-	by userid entrydate: egen surveys_perday=count(entrydate) //count surveys done each day	
-	collapse surveys_perday, by(userid entrydate)
+	contract userid entrydate
+// 	by userid entrydate: egen surveys_perday=count(entrydate) //count surveys done each day	
+// 	collapse surveys_perday, by(userid entrydate)
 
-	//label if supervisor
-	gen supervisor = 0
-	replace supervisor = 1 if userid == "E1" | userid == "N1" | userid == "C1" | userid == "U1" | userid == "W1" | userid == "K1"
+// 	//label if supervisor
+// 	gen supervisor = 0
+// 	replace supervisor = 1 if userid == "E1" | userid == "N1" | userid == "C1" | userid == "U1" | userid == "W1" | userid == "K1"
 	
-	//label if intern
-	gen intern = 1 if userid == "I1" | userid == "I2" | userid == "I3"
+// 	//label if intern
+// 	gen intern = 1 if userid == "I1" | userid == "I2" | userid == "I3"
 	
 	restore 
+	
+// 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
+// 	preserve
+	
+// 	// Get total number of records (for percent)
+// 	count
+// 	local total_records = r(N)
+	
+// 	// sort by region and ignore capitalization for substations
+// 	sort region subregion station substation
+// 	replace substation = lower(substation)
+	
+// 	// contract to variables of interest
+// 	contract region subregion station substation
+// 	rename _freq amount
+// 	gen percent = (amount/`total_records')
+	
+// 	count
+// 	local pct_length = r(N) + 1
+	
+	// Export to excel
+// 	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
+// 			sheetmodify sheet("Pairs") firstrow(var)
+	
+// // 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+// // 			sheet("Progress")
+			
+// // 	putexcel (A1:F1), bold border(bottom, medium, black)
+// // 	putexcel (F2:F`pct_length'), nformat(percent_d2)
+	
+// 	restore
+	
+// 	putexcel close
 
 
 ***********************graph******************************
@@ -323,6 +361,8 @@ restore
 *******************************************************************************/	
 
 if "$quality" == "on" {	
+
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
 	// Use the global variable $fill_in_previous_dates to posthumously perform 
 	//   the HFC for previous dates, (may be slow) - turn off to only perform 
@@ -333,8 +373,23 @@ if "$quality" == "on" {
 	// Figure out how many days need to be filled in
 	if ("$fill_in_previous_dates" == "on") {
 		gen date_num = substr("$today", 1, 2)
+		gen month_str = substr("$today", 4, 3)
+		gen month_num = "0"
+		if (month_str == "Jun") {
+			replace month_num = "6"
+		}
+		if (month_str == "Jul") {
+			replace month_num = "7"
+		}
 		destring date_num, replace
-		local loop_end = date_num - 13
+		destring month_num, replace
+		local loop_end = 0
+		if (month_num == 6) {
+			local loop_end = date_num - 13
+		}
+		else if (month_num == 7) {
+			local loop_end = date_num + 17
+		}
 		if ("$debug" == "on") {
 			disp "Previous dates will be filled in"
 			disp "Number of loops to be performed: `loop_end'"
