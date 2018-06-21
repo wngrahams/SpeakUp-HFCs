@@ -2,7 +2,7 @@
 			High Frequency Checks for Speakup Round 4 Data Collection
 Author: Béatrice Leydier, William Stubbs, Yuou Wu
 Email: bl517@georgetown.edu
-Date: 06/12/2018
+Date: 12/06/2018
 Updated: 21/06/2018
 *******************************************************************************/
 
@@ -18,7 +18,6 @@ set more off
 if "`c(username)'" == "bl517" {
 	cd "C:/Users/bl517/Box Sync/Data Analysis/SpeakUp"
 }
-	/*TODO: insert interns file paths here*/
 // Graham:
 else if "`c(username)'" == "grahamstubbs" {
 	cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs"
@@ -37,9 +36,9 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 *Switches
 global precleaning "on"
 global pairs "on"
-global enums "off"
-global quality "off"
-global debug "on"
+global enums "on"
+global quality "on"
+global debug "off"
 global fill_in_previous_dates "on" // explanation found in quality section
 
 *Date
@@ -57,13 +56,17 @@ global today = c(current_date)
 
 if "$precleaning" == "on" {
 
-use "$RawFolder/Speak Up Round 4 Survey.dta", clear
-
-// Drop if survey was started before the beginning of Round 4
-drop if starttime < mdyhms(6, 14, 2018, 00, 00, 00)
-
-*Save
-save "$TempFolder/Speakup_Round4_preclean.dta", replace
+	use "$RawFolder/Speak Up Round 4 Survey.dta", clear
+	
+	// Drop if survey was started before the beginning of Round 4
+	drop if starttime < mdyhms(6, 14, 2018, 00, 00, 00)
+	
+	// Team change 
+	replace userid = "C8" if userid=="K3" & starttime >= ///
+		mdyhms(6, 19, 2018, 00, 00, 00)
+	
+	*Save
+	save "$TempFolder/Speakup_Round4_preclean.dta", replace
 
 }
 	
@@ -84,7 +87,270 @@ save "$TempFolder/Speakup_Round4_preclean.dta", replace
 *******************************************************************************/	
 if "$pairs" == "on" {	
 
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 
+	preserve 
+	
+	// generate a string variable for each date
+	gen entrydate = dofc(submissiondate)
+	format entrydate %td
+	gen sub_date_day = day(entrydate)
+	gen sub_date_month = month(entrydate)
+	tostring sub_date_day, replace
+	tostring sub_date_month, replace
+	gen date_str = sub_date_day + "_" + sub_date_month + "_2018"
+	
+	// sort bu userid and entrydate
+	sort userid entrydate
+
+	// collapse on userid and entrydate
+	by userid entrydate: egen entry_amt=count(entrydate)
+	collapse entry_amt, by(userid entrydate date_str)
+	
+	drop entrydate
+	
+	// reshape such that data shows amount of entries per userid per date
+	reshape wide entry_amt, i(userid) j(date_str) string
+	
+	// generate variables to distinguish supervisors and interns
+	gen intern = 0
+	replace intern = 1 if (substr(userid, 1, 1) == "I")
+	gen supervisor = 0
+	replace supervisor = 1 if (substr(userid, 2, 1) == "1" & intern != 1)
+	
+	// replace missing values with zeros for amount of entries on each date
+	foreach x of varlist entry_amt* {
+		replace `x' = 0 if missing(`x') 
+	}
+	
+	// set labels for output
+	label var userid "User ID"
+	local number_of_days = c(k) - 3
+	// this is only valid for June and July with a start date of June 14
+	// this should be changed if this code is used for another purpose
+	local last_day = 14 + `number_of_days' - 1
+	forvalues i = 14/`last_day' {
+		if (`i' <= 30) {
+			label var entry_amt`i'_6_2018 "`i' Jun 2018"
+		}
+		else {
+			local day = `i' - 30
+			label var entry_amt`day'_7_2018 "`day' Jul 2018"
+		}
+	}
+	
+	// Export to excel
+	export excel userid entry_amt* ///
+		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+		if supervisor != 1 & intern != 1, ///
+		sheetreplace sheet("Pairs") firstrow(varl) cell(A2)
+		
+	count if supervisor != 1 & intern != 1
+	local enum_ct = r(N)
+	local sup_cell = `enum_ct' + 5
+	export excel userid entry_amt* ///
+		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+		if supervisor == 1 & intern != 1, ///
+		sheetmodify sheet("Pairs") firstrow(varl) cell(A`sup_cell')
+		
+	count if supervisor == 1
+	local sup_ct = r(N)
+	local intern_cell = `sup_cell' + `sup_ct' + 3
+	export excel userid entry_amt* ///
+		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+		if supervisor != 1 & intern == 1, ///
+		sheetmodify sheet("Pairs") firstrow(varl) cell(A`intern_cell')
+		
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+			sheet("Pairs")
+			
+	putexcel A1 = "Enumerators", bold overwritefmt
+	// Ensure column loops to AA after Z
+	local export_col_num = 65 + `number_of_days'
+	local export_col = "A"
+	if (`export_col_num') <= 90 {
+		local export_col = char(`export_col_num')
+	}
+	else {
+		local export_col = char(`export_col_num' - 26)
+		local export_col = "A" + "`export_col'"
+	}
+	putexcel (A2:`export_col'2), bold border(bottom, medium, black)
+	local enum_end = `enum_ct' + 2
+	putexcel (A3:A`enum_end'), border(right, medium, black)
+	
+	local sup_title = `sup_cell' - 1
+	putexcel A`sup_title' = "Supervisors", bold overwritefmt
+	putexcel (A`sup_cell':`export_col'`sup_cell'), ///
+		bold border(bottom, medium, black)
+	local sup_start = `sup_cell' + 1
+	local sup_end = `sup_ct' + `sup_cell'
+	putexcel (A`sup_start':A`sup_end'), border(right, medium, black)
+		
+	local intern_title = `intern_cell' - 1
+	putexcel A`intern_title' = "Interns", bold overwritefmt
+	putexcel (A`intern_cell':`export_col'`intern_cell'), ///
+		bold border(bottom, medium, black)
+	local intern_start = `intern_cell' + 1
+	count if intern == 1
+	local intern_ct = r(N)
+	local intern_end = `intern_ct' + `intern_cell'
+	putexcel (A`intern_start':A`intern_end'), border(right, medium, black)
+	
+	local teams "I" "C" "E" "K" "N" "U" "W"
+	local team_sizes = ""
+	local team_ct : list sizeof teams
+	forvalues i = 1/`team_ct' {
+		local team_to_check `: word `i' of `teams''
+		if (`"`team_to_check'"' != `"I"') {
+			disp "team_to_check: `team_to_check'"
+			count if substr(userid, 1, 1) == `"`team_to_check'"' /// 
+				& substr(userid, 2, 1) != "1"
+			local team_size = r(N)
+			disp "amount: `team_size'"
+			local team_sizes `team_sizes' "`team_size'"
+		}
+	}
+	disp `"`team_sizes'"'
+	
+	local hl_start = 2
+	forvalues i = 2/`team_ct' {
+		local hl_dist `: word `i' of `team_sizes''
+		local hl_start = `hl_start' + `hl_dist'
+		putexcel (A`hl_start':`export_col'`hl_start'), ///
+			border(bottom, thin, black) 
+	}
+		
+	restore
+	
+***********************graph******************************
+	preserve
+	format starttime %tcHH:MM:SS
+	format endtime %tcHH:MM:SS
+	
+	// CHOOSE WHICH TEAM IS GRAPHED HERE:
+// 	local team_choice = "E"
+	local team_choice = "W"
+// 	local team_choice = "N"
+// 	local team_choice = "C"
+// 	local team_choice = "K"
+// 	local team_choice = "U"
+// 	local team_choice = "I"
+
+	if ("$debug" == "on") {
+		disp "The chosen team is: `team_choice'"
+	}
+	
+	// SELECT DATE OF GRAPH HERE
+	gen startdate=dofc(starttime)
+	keep if startdate==mdy(06,15,2018) // THIS IS THE VALUE TO CHANGE
+	
+	keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
+		userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
+		userid == "`team_choice'5" | userid == "`team_choice'6" | ///
+		userid == "`team_choice'7" | userid == "`team_choice'8" | ///
+		userid == "`team_choice'9" 
+	gen starttime2 = hh(starttime)+mm(starttime)/60+ss(starttime)/3600
+	
+	gen date_HRF = dofc(starttime)
+	format date_HRF %td
+	local title_d = day(date_HRF)
+	local title_m = month(date_HRF)
+	local title_y = year(date_HRF)
+	
+	// generate missing enumerators
+	local max_team = 9
+	list userid
+	forvalues i = 1/`max_team' {
+		local userid_to_check = "`team_choice'`i'"
+		if  !(`: list userid_to_check in userid') {
+			local numobs = _N + 1
+			set obs `numobs'
+			replace userid = "`team_choice'`i'" in l
+		}
+	}
+	
+	// Drop unused ID's for each enumerator
+	local number_team=0
+	/*central*/ 
+	if "`team_choice'"== "C" {
+		drop if userid == "C3" | userid == "C5" | userid == "C6" |  userid == "C9" 
+		encode userid, generate (userid2)
+		label list userid2
+		label define userid2 1 "Rosemary A." 2 "Martin R.E." 3 "Cissy N." /// 
+			4 "Samuel Besigwa" 5 "Flavia N.", modify
+		local number_team = 5
+	}
+
+	/*Kampala*/
+	if "`team_choice'"== "K" {
+		drop if userid == "K3"
+		encode userid, generate (userid2)
+		label list userid2
+		label define userid2 1 "Joseline N." 2 "Peter K." 3 "Davis M." 4 /// 
+			"Doreen T." 5 "Kenneth Y." 6 "Anita K." 7 "Mary Clare K." 8 ///
+			"Irene(Atto) N.", modify
+		local number_team = 8
+	}
+	/*Uganda*/	
+	if "`team_choice'"== "U" {
+		drop if userid == "U8" | userid == "U9"
+		encode userid, generate (userid2)
+		label list userid2
+		label define userid2 1 "Isaac Kimbugwe" 2 "Justine K." 3 ///
+			"Rosemary U." 4 "Mercy C." 5 "Isaac Kitabye" 6 ///
+			"Abdulrazaq(Zach) S." 7 "Pamela N.", modify
+		local number_team = 7
+	}
+	/*eastern*/
+	if "`team_choice'"== "E" {
+		encode userid, generate (userid2)
+		label list userid2
+		label define userid2 1 "Honda A." 2 "Catherine N." 3 "Alfred B." ///
+			4 "Tom E." 5 "Brenda K." 6 "Paul S." 7 "Emmanuel B." 8 ///
+			"Christine L." 9 "Martha T.", modify
+		local number_team = 9
+	}
+	/*western*/
+	if "`team_choice'"== "W" {
+		encode userid, generate (userid2)
+		label list userid2
+		label define userid2 1 "Blaise M." 2 "Owen A." 3 "Anthony K." 4 ///
+			"Christine Kansiime" 5 "Janet M." 6 "Irene(Annet) K." 7 ///
+			"Edwin B." 8 "Kaunda(Kakaya) E." 9 "Patrick A.", modify
+		local number_team = 9
+	}
+	/*northern*/
+	if "`team_choice'"== "N" {
+		drop if userid == "N5"
+		encode userid, generate (userid2)
+		label list userid2
+		label define userid2 1 "Julie G." 2 "Samuel Basoga" 3 "Ritah K." 4 ///
+			"Reagan K." 5 "Allan Erema S." 6 "Kizito K." 7 ///
+			"Kaunda(Kakaya) E." 8 "Dora A.", modify
+		local number_team = 8
+	}
+	/*intern*/
+	if "`team_choice'"== "I" {
+		drop if userid == "I4" | userid == "I5" | userid == "I6" | /// 
+			userid == "I7" | userid == "I8" | userid == "I9" 
+		encode userid, generate (userid2)
+		label list userid2
+		label define userid2 1 "Graham S." 2 "Jacklyn P." 3 "Yuou W.", modify
+		local number_team = 3
+	}
+	
+	// generate graph
+	twoway scatter userid2 starttime2, ///
+		title("Survey Distribution for Team `team_choice' on `title_d'/`title_m'/`title_y'") ///
+		yti("Enumerator") xti("Survey Start") /// 
+		xlabel(8 "8:00" 9 "09:00" 10 "10:00" 11 "11:00" 12 "12:00" 13 "13:00" ///
+		14 "14:00" 15 "15:00" 16 "16:00" 17 "17:00" 18 "18:00") ///
+		ylabel(1(1)`number_team', valuelabel angle(0))
+	
+	drop startdate starttime2
+	
+	restore
 }	
 	
 	
@@ -109,13 +375,15 @@ if "$pairs" == "on" {
 if "$enums" == "on" {	
 
 use "$TempFolder/Speakup_Round4_preclean.dta", clear
-
+preserve
 
 *************************dashboard set up************************
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet ("Enums")
-	putexcel A2 = ("enums") B2 = ("number of entries") C2= ("avg. duration or entries") D2=("avg. start time") ///
-	E2=("avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") N2=("# injuries") B1=("Metadata") ///
-	F1=("H+R") H1=("Missing Values")
+	putexcel A2 = ("enums") B2 = ("number of entries") /// 
+		C2= ("avg. duration or entries") D2=("avg. start time") ///
+		E2=("avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") ///
+		N2=("# injuries") B1=("Metadata") ///
+		F1=("H+R") H1=("Missing Values")
 	putexcel (A3:O3), border(bottom, thin, black)
 
 **********************record values******************************
@@ -157,15 +425,19 @@ use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	format percentinjurymissing %9.2fc
 	
 	/*export to excel*/
-	collapse totalentries avg_duration avg_starttime avg_endtime totalhitandrun percenthitandrun ///
-	totalTARmissing percentTARmissing totaltimemissing percenttimemissing totaldeathmissing ///
-	percentdeathmissing totalinjurymissing percentinjurymissing, by(userid)
-	export excel using "$OutputFolder/Monitoring_template_Rd4.xlsx", cell(A4) sheet ("Enums", modify)
+	collapse totalentries avg_duration avg_starttime avg_endtime ///
+		totalhitandrun percenthitandrun totalTARmissing percentTARmissing ///
+		totaltimemissing percenttimemissing totaldeathmissing ///
+		percentdeathmissing totalinjurymissing percentinjurymissing, by(userid)
+	export excel using "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
+		cell(A4) sheet ("Enums", modify)
 	levelsof userid
 	local linedist = r(r) + 3
 	putexcel (E1:E`linedist'), border(right, thin, black)
 	putexcel (G1:G`linedist'), border(right, thin, black)
 	putexcel (O1:O`linedist'), border(right, thin, black)
+	
+restore
 }
 
 
@@ -192,6 +464,8 @@ use "$TempFolder/Speakup_Round4_preclean.dta", clear
 *******************************************************************************/	
 
 if "$quality" == "on" {	
+
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
 	// Use the global variable $fill_in_previous_dates to posthumously perform 
 	//   the HFC for previous dates, (may be slow) - turn off to only perform 
@@ -201,9 +475,26 @@ if "$quality" == "on" {
 	local loop_end = 1
 	// Figure out how many days need to be filled in
 	if ("$fill_in_previous_dates" == "on") {
+		// this is only valid for June and July with a start date of June 14
+		// this should be changed if this code is used for another purpose
 		gen date_num = substr("$today", 1, 2)
+		gen month_str = substr("$today", 4, 3)
+		gen month_num = "0"
+		if (month_str == "Jun") {
+			replace month_num = "6"
+		}
+		if (month_str == "Jul") {
+			replace month_num = "7"
+		}
 		destring date_num, replace
-		local loop_end = date_num - 13
+		destring month_num, replace
+		local loop_end = 0
+		if (month_num == 6) {
+			local loop_end = date_num - 13
+		}
+		else if (month_num == 7) {
+			local loop_end = date_num + 17
+		}
 		if ("$debug" == "on") {
 			disp "Previous dates will be filled in"
 			disp "Number of loops to be performed: `loop_end'"
@@ -213,9 +504,7 @@ if "$quality" == "on" {
 	forvalues HFC_loop_num = 1/`loop_end' {
 	
 		use "$TempFolder/Speakup_Round4_preclean.dta", clear
-// 		if (`HFC_loop_num' == 1) {
-			preserve
-// 		}
+		preserve
 		
 		if ("$fill_in_previous_dates" == "on") {
 			// as the outer loop iterates, this (temporaritly) drops all obs 
@@ -239,7 +528,7 @@ if "$quality" == "on" {
 			drop sub_date_day sub_date_month sub_date_num
 		}
 	
-******************************* get Total records ******************************
+		*************************** get Total records **************************
 		count
 		local total_records = r(N)
 		
@@ -273,6 +562,13 @@ if "$quality" == "on" {
 		// this only needs to be exported once
 		if (`HFC_loop_num' == `loop_end') {
 			putexcel A2 = "Summary of Potential Errors", bold
+			putexcel B4 = "Total Records"
+			putexcel B6 = "# H+R accidents"
+			putexcel B7 = "% of H+R accidents"
+			putexcel B9 = "# duplicate accidents"
+			putexcel B10 = "% of duplicate accidents"
+			putexcel B12 = "# flags from comment"
+			putexcel B13 = "% flags from comment"
 			putexcel (B4:B13), border(right, medium, black)
 		}
 		if ("$debug" == "on") {
@@ -325,7 +621,7 @@ if "$quality" == "on" {
 			putexcel (A1:GF1), bold border(bottom, thin, black)
 		}
 		
-****** Flag and export all entries with additional info (potential issues) *****
+		*********** Flag and export all entries with potential issues **********
 		gen potential_issues = 0
 		
 		// generate a new variable that is equivalent to additionalinfo but 
@@ -371,7 +667,7 @@ if "$quality" == "on" {
 		drop potential_issues
 		
 		
-************************* search and record duplicates *************************
+		********************* search and record duplicates *********************
 		// find and group records with the same date
 		duplicates tag date, gen(same_date)  
 		sort date
@@ -602,6 +898,39 @@ if "$quality" == "on" {
 			disp "End of loop `HFC_loop_num'"
 		}
 	}
+	
+****************************    SURVEY PROGRESS    *****************************
+		
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
+	preserve
+	
+	// Get total number of records (for percent)
+	count
+	local total_records = r(N)
+	
+	// sort by region and ignore capitalization for substations
+	sort region subregion station substation
+	replace substation = lower(substation)
+	
+	// contract to variables of interest
+	contract region subregion station substation
+	rename _freq amount
+	gen percent = (amount/`total_records')
+	
+	count
+	local pct_length = r(N) + 1
+	
+	// Export to excel
+	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
+			sheetmodify sheet("Progress") firstrow(var)
+	
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+			sheet("Progress")
+			
+	putexcel (A1:F1), bold border(bottom, medium, black)
+	putexcel (F2:F`pct_length'), nformat(percent_d2)
+	
+	restore
 	
 	putexcel close
 }
