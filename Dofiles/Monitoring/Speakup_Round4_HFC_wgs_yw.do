@@ -37,9 +37,9 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 *Switches
 global precleaning "on"
 global pairs "on"
-global enums "off"
-global quality "off"
-global debug "on"
+global enums "on"
+global quality "on"
+global debug "off"
 global fill_in_previous_dates "on" // explanation found in quality section
 
 *Date
@@ -126,9 +126,9 @@ use "$TempFolder/Speakup_Round4_preclean.dta", clear
 		set obs `numobs'
 		replace userid = "E1" in l
 	}
-// 	if "`team_choice'" == "C" {
-// 		drop if userid == "C5" | userid == "C6" 
-// 	}
+	if "`team_choice'" == "C" {
+		drop if userid == "C5" | userid == "C6" 
+	}
 // 	if "`team_choice'" == "K" {
 // 		drop if userid == "K4"
 // 	}
@@ -184,6 +184,8 @@ use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
 	
 	drop startdate starttime2
+	
+	
 	
 	restore
 }	
@@ -314,9 +316,7 @@ if "$quality" == "on" {
 	forvalues HFC_loop_num = 1/`loop_end' {
 	
 		use "$TempFolder/Speakup_Round4_preclean.dta", clear
-// 		if (`HFC_loop_num' == 1) {
-			preserve
-// 		}
+		preserve
 		
 		if ("$fill_in_previous_dates" == "on") {
 			// as the outer loop iterates, this (temporaritly) drops all obs 
