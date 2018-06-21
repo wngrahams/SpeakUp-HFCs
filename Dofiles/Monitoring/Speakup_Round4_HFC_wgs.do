@@ -134,10 +134,11 @@ if "$enums" == "on" {
 if "$quality" == "on" {	
 	
 	// Turn this global on to posthumously perform the HFC for previous dates,
-	//   (may be slow)
+	//   (may be slow) - turn off to only perform HFC for today's date
 	global fill_in_previous_dates "on"
 
 	local loop_end = 1
+	// Figure out how many days need to be filled in
 	if ("$fill_in_previous_dates" == "on") {
 		gen date_num = substr("$today", 1, 2)
 		destring date_num, replace
@@ -156,6 +157,9 @@ if "$quality" == "on" {
 		}
 		
 		if ("$fill_in_previous_dates" == "on") {
+			// as the outer loop iterates, this (temporaritly) drops all obs 
+			//  submitted for dates after the date the current iteration of the 
+			//  loop is looking at
 			gen sub_date_num = dofc(submissiondate)
 			format sub_date_num %td
 			gen sub_date_day = day(sub_date_num)
@@ -170,6 +174,7 @@ if "$quality" == "on" {
 				drop if sub_date_day > `HFC_loop_num' - 17 & sub_date_month == 7
 			}
 			
+			// drop unneeded vars
 			drop sub_date_day sub_date_month sub_date_num
 		}
 	
@@ -177,42 +182,43 @@ if "$quality" == "on" {
 		count
 		local total_records = r(N)
 		
+		// determine export column depding on date of observations currently
+		//  being viewed by this iteration of the for loop
 		local export_col = "A"
-		
+		local export_col_num = 0
 		if ("$fill_in_previous_dates" == "on") {
-			local export_col = char(`HFC_loop_num' + 13 + 53)
+			local export_col_num = `HFC_loop_num' + 13 + 53
 		}
 		else {
 			gen date_num = substr("$today", 1, 2)
 			destring date_num, replace
-			local export_col = char(date_num)
-			if (date_num + 53) <= 90 {
-				local export_col = char(date_num + 53)
-			}
-			else {
-				local export_col = char(date_num + 53 - 26)
-				local export_col = "A" + "`export_col'"
-			}
+			local export_col_num = date_num + 53
 			drop date_num
+		}
+		
+		// Ensure column loops to AA after Z
+		if (`export_col_num') <= 90 {
+			local export_col = char(`export_col_num')
+		}
+		else {
+			local export_col = char(`export_col_num' - 26)
+			local export_col = "A" + "`export_col'"
 		}
 		
 		// export to excel
 		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
+		
+		// this only needs to be exported once
 		if (`HFC_loop_num' == `loop_end') {
 			putexcel A2 = "Summary of Potential Errors", bold
-// 			putexcel C3 = "14 June 2018", bold border(bottom, medium, black) overwritefmt
-// 			putexcel D3 = "15 June 2018", bold border(bottom, medium, black) overwritefmt
-// 			putexcel E3 = "16 June 2018", bold border(bottom, medium, black) overwritefmt
-// 			putexcel F3 = "17 June 2018", bold border(bottom, medium, black) overwritefmt
-// 			putexcel G3 = "18 June 2018", bold border(bottom, medium, black) overwritefmt
-// 			putexcel H3 = "19 June 2018", bold border(bottom, medium, black) overwritefmt
-// 			putexcel I3 = "20 June 2018", bold border(bottom, medium, black) overwritefmt
 			putexcel (B4:B13), border(right, medium, black)
 		}
 		if ("$debug" == "on") {
 			disp "Today: $today"
 			disp "Exporting summaries to column `export_col'"
 		}
+		
+		// Determine what to label column dates
 		local date_str = ""
 		if ("$fill_in_previous_dates" == "on") {
 			// this is only valid for June and July with a start date of June 14
@@ -225,7 +231,6 @@ if "$quality" == "on" {
 				local temp_date = `HFC_loop_num' -17
 				local date_str = "`temp_date' July 2018"
 			}
-			
 		}
 		else {
 			local date_str = "$today"
@@ -243,6 +248,7 @@ if "$quality" == "on" {
 		putexcel `export_col'6 = `hitandrun_amt'
 		putexcel `export_col'7 = (`hitandrun_pct'), nformat(percent_d2)	
 		
+		// these only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
 			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if hitandrun == 1, sheetreplace sheet("_export H+R ") firstrow(var)
 			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export H+R ")
@@ -285,6 +291,7 @@ if "$quality" == "on" {
 			putexcel (A1:GH1), bold border(bottom, thin, black)
 		}
 		
+		// drop var that is no longer needed
 		drop potential_issues
 		
 		
@@ -353,8 +360,6 @@ if "$quality" == "on" {
 					}
 					
 					if ("`psvregistration_k_j'" != "") {
-					
-						
 						
 						// if there is nothing in the list, add the first psv 
 						//   registration number
@@ -443,7 +448,6 @@ if "$quality" == "on" {
 		//   duplicates_amt)
 		duplicates tag duplicates_grouped if duplicates_grouped != 0, gen(duplicates_amt)
 		
-// 		preserve
 		drop if duplicates_grouped == 0
 		gsort - duplicates_grouped psvregistration1 submissiondate
 		
@@ -465,6 +469,7 @@ if "$quality" == "on" {
 		putexcel `export_col'9 = `duplicate_count'
 		putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
 		
+		// These only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
 			putexcel A9 = "This is the amount of records that are likely duplicates of another", italic font("Calibri (Body)", 11, red)
 			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if duplicates_grouped != 0, sheetreplace sheet("_export dups") firstrow(var)
