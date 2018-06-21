@@ -36,10 +36,11 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
+global pairs "on"
 global enums "off"
-global pairs "off"
-global quality "on"
-global debug "off"
+global quality "off"
+global debug "on"
+global fill_in_previous_dates "on" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -81,9 +82,7 @@ save "$TempFolder/Speakup_Round4_preclean.dta", replace
 		
 *******************************************************************************
 *******************************************************************************/	
-
 if "$pairs" == "on" {	
-
 
 
 }	
@@ -109,8 +108,64 @@ if "$pairs" == "on" {
 
 if "$enums" == "on" {	
 
+use "$TempFolder/Speakup_Round4_preclean.dta", clear
 
 
+*************************dashboard set up************************
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet ("Enums")
+	putexcel A2 = ("enums") B2 = ("number of entries") C2= ("avg. duration or entries") D2=("avg. start time") ///
+	E2=("avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") N2=("# injuries") B1=("Metadata") ///
+	F1=("H+R") H1=("Missing Values")
+	putexcel (A3:O3), border(bottom, thin, black)
+
+**********************record values******************************
+	*average duration*
+	destring duration, replace
+	bysort userid: egen avg_durationsec = mean(duration)
+	gen avg_duration=avg_durationsec/60
+	*average start/end times*
+	bysort userid: egen avg_starttime = mean(starttime)
+	bysort userid: egen avg_endtime = mean(endtime)
+	format avg_starttime %tcHH:MM:SS
+	format avg_endtime %tcHH:MM:SS
+	*total entries*
+	egen totalentries = count(userid), by (userid)
+	
+	*H+R*
+
+	bysort userid: egen totalhitandrun=total(hitandrun==1)
+	gen percenthitandrun = totalhitandrun/totalentries
+	format percenthitandrun %9.2fc
+	
+	*missing values*
+	*TAR*
+	bysort userid: egen totalTARmissing=total(tar_number==9999)
+	gen percentTARmissing=totalTARmissing/totalentries
+	format percentTARmissing %9.2fc
+	*time*
+	destring time, replace
+	bysort userid: egen totaltimemissing=total(time==9999)
+	gen percenttimemissing=totaltimemissing/totalentries
+	format percenttimemissing %9.2fc
+	*death*
+	bysort userid: egen totaldeathmissing=total(deathcount==9999)
+	gen percentdeathmissing=totaldeathmissing/totalentries 
+	format percentdeathmissing %9.2fc
+	*injury*
+	bysort userid: egen totalinjurymissing=total(injurycount==9999)
+	gen percentinjurymissing=totalinjurymissing/totalentries
+	format percentinjurymissing %9.2fc
+	
+	/*export to excel*/
+	collapse totalentries avg_duration avg_starttime avg_endtime totalhitandrun percenthitandrun ///
+	totalTARmissing percentTARmissing totaltimemissing percenttimemissing totaldeathmissing ///
+	percentdeathmissing totalinjurymissing percentinjurymissing, by(userid)
+	export excel using "$OutputFolder/Monitoring_template_Rd4.xlsx", cell(A4) sheet ("Enums", modify)
+	levelsof userid
+	local linedist = r(r) + 3
+	putexcel (E1:E`linedist'), border(right, thin, black)
+	putexcel (G1:G`linedist'), border(right, thin, black)
+	putexcel (O1:O`linedist'), border(right, thin, black)
 }
 
 
@@ -138,9 +193,10 @@ if "$enums" == "on" {
 
 if "$quality" == "on" {	
 	
-	// Turn this global on to posthumously perform the HFC for previous dates,
-	//   (may be slow) - turn off to only perform HFC for today's date
-	global fill_in_previous_dates "on"
+	// Use the global variable $fill_in_previous_dates to posthumously perform 
+	//   the HFC for previous dates, (may be slow) - turn off to only perform 
+	//   HFC for today's date. If the HFC is run every day this is not needed,
+	//   but it is useful if a day is missed
 
 	local loop_end = 1
 	// Figure out how many days need to be filled in
@@ -157,9 +213,9 @@ if "$quality" == "on" {
 	forvalues HFC_loop_num = 1/`loop_end' {
 	
 		use "$TempFolder/Speakup_Round4_preclean.dta", clear
-		if (`HFC_loop_num' == 1) {
+// 		if (`HFC_loop_num' == 1) {
 			preserve
-		}
+// 		}
 		
 		if ("$fill_in_previous_dates" == "on") {
 			// as the outer loop iterates, this (temporaritly) drops all obs 
@@ -540,7 +596,7 @@ if "$quality" == "on" {
 			}
 		}
 		
-		restore, preserve
+		restore
 		
 		if ("$debug" == "on") {
 			disp "End of loop `HFC_loop_num'"
