@@ -35,12 +35,12 @@ global FinalFolder "Data/Final"
 global OutputFolder "Monitoring/Round 4 monitoring"	
 	
 *Switches
-global precleaning "on"
-global pairs "on"
-global enums "on"
+global precleaning "off"
+global pairs "off"
+global enums "off"
 global quality "on"
 global debug "off"
-global fill_in_previous_dates "on" // explanation found in quality section
+global fill_in_previous_dates "off" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -212,7 +212,7 @@ use "$TempFolder/Speakup_Round4_preclean.dta", clear
 if "$enums" == "on" {	
 
 use "$TempFolder/Speakup_Round4_preclean.dta", clear
-
+preserve
 
 *************************dashboard set up************************
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet ("Enums")
@@ -269,6 +269,8 @@ use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	putexcel (E1:E`linedist'), border(right, thin, black)
 	putexcel (G1:G`linedist'), border(right, thin, black)
 	putexcel (O1:O`linedist'), border(right, thin, black)
+	
+restore
 }
 
 
@@ -340,7 +342,7 @@ if "$quality" == "on" {
 			drop sub_date_day sub_date_month sub_date_num
 		}
 	
-******************************* get Total records ******************************
+		*************************** get Total records **************************
 		count
 		local total_records = r(N)
 		
@@ -374,6 +376,13 @@ if "$quality" == "on" {
 		// this only needs to be exported once
 		if (`HFC_loop_num' == `loop_end') {
 			putexcel A2 = "Summary of Potential Errors", bold
+			putexcel B4 = "Total Records"
+			putexcel B6 = "# H+R accidents"
+			putexcel B7 = "% of H+R accidents"
+			putexcel B9 = "# duplicate accidents"
+			putexcel B10 = "% of duplicate accidents"
+			putexcel B12 = "# flags from comment"
+			putexcel B13 = "% flags from comment"
 			putexcel (B4:B13), border(right, medium, black)
 		}
 		if ("$debug" == "on") {
@@ -426,7 +435,7 @@ if "$quality" == "on" {
 			putexcel (A1:GF1), bold border(bottom, thin, black)
 		}
 		
-****** Flag and export all entries with additional info (potential issues) *****
+		*********** Flag and export all entries with potential issues **********
 		gen potential_issues = 0
 		
 		// generate a new variable that is equivalent to additionalinfo but 
@@ -472,7 +481,7 @@ if "$quality" == "on" {
 		drop potential_issues
 		
 		
-************************* search and record duplicates *************************
+		********************* search and record duplicates *********************
 		// find and group records with the same date
 		duplicates tag date, gen(same_date)  
 		sort date
@@ -703,6 +712,36 @@ if "$quality" == "on" {
 			disp "End of loop `HFC_loop_num'"
 		}
 	}
+	
+****************************    SURVEY PROGRESS    *****************************
+		
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
+	preserve
+	
+	count
+	local total_records = r(N)
+	
+	sort region subregion station substation
+	replace substation = lower(substation)
+	
+	contract region subregion station substation
+	rename _freq amount
+	gen percent = (amount/`total_records')
+	format percent %4.1f
+	
+	count
+	local pct_length = r(N) + 1
+	
+	export excel "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
+			sheetmodify sheet("Progress") firstrow(var)
+	
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+			sheet("Progress")
+			
+	putexcel (A1:F1), bold border(bottom, medium, black)
+	putexcel (F2:F`pct_length'), nformat(percent_d2)
+	
+	restore
 	
 	putexcel close
 }
