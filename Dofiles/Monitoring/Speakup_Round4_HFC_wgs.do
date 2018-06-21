@@ -1,9 +1,9 @@
 /******************************************************************************
 			High Frequency Checks for Speakup Round 4 Data Collection
-Author: Béatrice Leydier, William Stubbs
+Author: Béatrice Leydier, William Stubbs, Yuou Wu
 Email: bl517@georgetown.edu
 Date: 06/12/2018
-Updated: 
+Updated: 21/06/2018
 *******************************************************************************/
 
 	/*__________________
@@ -17,12 +17,16 @@ set more off
 *Usernames
 if "`c(username)'" == "bl517" {
 	cd "C:/Users/bl517/Box Sync/Data Analysis/SpeakUp"
-	}
+}
 	/*TODO: insert interns file paths here*/
 // Graham:
 else if "`c(username)'" == "grahamstubbs" {
 	cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs"
-	}
+}
+// Yuou:
+else if "`c(username)'" == "yuouwu" {
+	cd "/users/yuouwu/Box Sync/"
+}
 
 *File paths
 global RawFolder "Data/Raw/Speakup Round4"
@@ -179,7 +183,7 @@ if "$quality" == "on" {
 			drop sub_date_day sub_date_month sub_date_num
 		}
 	
-		/* get Total records */
+******************************* get Total records ******************************
 		count
 		local total_records = r(N)
 		
@@ -207,7 +211,8 @@ if "$quality" == "on" {
 		}
 		
 		// export to excel
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
+		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+			sheet("Quality")
 		
 		// this only needs to be exported once
 		if (`HFC_loop_num' == `loop_end') {
@@ -236,7 +241,9 @@ if "$quality" == "on" {
 		else {
 			local date_str = "$today"
 		}
-		putexcel `export_col'3 = "`date_str'", bold border(bottom, medium, black) font("Calibri (Body)", 11, black) overwritefmt
+		putexcel `export_col'3 = "`date_str'", bold ///
+			border(bottom, medium, black) font("Calibri (Body)", 11, black) ///
+			overwritefmt
 		putexcel `export_col'4 = `total_records'
 		
 		
@@ -251,14 +258,18 @@ if "$quality" == "on" {
 		
 		// these only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if hitandrun == 1, sheetreplace sheet("_export H+R ") firstrow(var)
-			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export H+R ")
+			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				if hitandrun == 1, sheetreplace sheet("_export H+R ") ///
+				firstrow(var)
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
+				modify sheet("_export H+R ")
 			local hr_highlight_length = `hitandrun_amt'+1
-			putexcel (AA1:AA`hr_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
+			putexcel (AA1:AA`hr_highlight_length'), ///
+				fpattern(solid, lightpink, lightpink) overwritefmt
 			putexcel (A1:GF1), bold border(bottom, thin, black)
 		}
 		
-		/* Flag and export all entries with additional info (potential issues) */
+****** Flag and export all entries with additional info (potential issues) *****
 		gen potential_issues = 0
 		
 		// generate a new variable that is equivalent to additionalinfo but 
@@ -266,10 +277,13 @@ if "$quality" == "on" {
 		gen additionalinfo_lower = lower(additionalinfo)
 		
 		// remove punctuation
-		replace additionalinfo_lower = subinstr(additionalinfo_lower, ".", "", .)
+		replace additionalinfo_lower = ///
+			subinstr(additionalinfo_lower, ".", "", .)
 		
 		// flag entries that may contain something worth checking
-		replace potential_issues = 1 if (additionalinfo_lower != "" & additionalinfo_lower != "none" & additionalinfo_lower != "no" & additionalinfo_lower != "n/a" & additionalinfo_lower != "nothing")
+		replace potential_issues = 1 if (additionalinfo_lower != "" ///
+			& additionalinfo_lower != "none" & additionalinfo_lower != "no" ///
+			& additionalinfo_lower != "n/a" & additionalinfo_lower != "nothing")
 		
 		// drop uneeded var
 		drop additionalinfo_lower
@@ -280,15 +294,20 @@ if "$quality" == "on" {
 		local flags_pct = `flags_count'/`total_records'
 		
 		// export to excel
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
+		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+			sheet("Quality")
 		putexcel `export_col'12 = `flags_count'
 		putexcel `export_col'13 = `flags_pct', nformat(percent_d2)
 		
 		if (`HFC_loop_num' == `loop_end') {
-			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if potential_issues==1, sheetreplace sheet("_export flags") firstrow(var)
-			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export flags")
+			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				if potential_issues==1, sheetreplace sheet("_export flags") ///
+				firstrow(var)
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
+				modify sheet("_export flags")
 			local flags_highlight_length = `flags_count' + 1
-			putexcel (AM1:AM`flags_highlight_length'), fpattern(solid, lightpink, lightpink) overwritefmt
+			putexcel (AM1:AM`flags_highlight_length'), ///
+				fpattern(solid, lightpink, lightpink) overwritefmt
 			putexcel (A1:GH1), bold border(bottom, thin, black)
 		}
 		
@@ -296,7 +315,7 @@ if "$quality" == "on" {
 		drop potential_issues
 		
 		
-		/* search and record duplicates */
+************************* search and record duplicates *************************
 		// find and group records with the same date
 		duplicates tag date, gen(same_date)  
 		sort date
@@ -335,8 +354,8 @@ if "$quality" == "on" {
 		gen duplicates_grouped = 0
 		local i = 1
 		
-		// iterate through records until reaching the records for which they have no
-		//   duplicate dates
+		// iterate through records until reaching the records for which they 
+		//   have no duplicate dates
 		while `i' <= `total_records' & same_date_grouped[`i'] != 0 {
 		
 			local amt_to_check = same_date[`i']	
@@ -344,20 +363,22 @@ if "$quality" == "on" {
 			local psvlist_size = 0
 			local j = `i'
 			
-			// iterate through groups of records that were determined to have the 
-			//   same date
+			// iterate through groups of records that were determined to have  
+			//   the same date
 			while `j' <= (`i' + `amt_to_check') {
 			
 				local k = 1
 				
 				// for each of these records, add their psv registration numbers 
-				//   to a list. If one of their psv registration numbers is already
-				//   on the list, mark the matching records as duplicates
+				//   to a list. If one of their psv registration numbers is 
+				//   already on the list, mark the matching records as 
+				//   duplicates
 				while `k' <= psvcount[`j'] {
 				
 					local psvregistration_k_j = psvregistration`k'[`j']
 					if "$debug" == "on" {
-							display "psvregistration`k'[`j']: `psvregistration_k_j'" 
+							display ///
+								"psvregistration`k'[`j']: `psvregistration_k_j'" 
 					}
 					
 					if ("`psvregistration_k_j'" != "") {
@@ -375,8 +396,8 @@ if "$quality" == "on" {
 							}
 						}
 						
-						// if the list is not empty but the psv registration number is
-						//   not found on the list, add it to the list
+						// if the list is not empty but the psv registration 
+						//   number is not found on the list, add it to the list
 						else if !(`: list psvregistration_k_j in psvlist') {
 							local psvlist `psvlist' `psvregistration_k_j'
 							local psvlist_size = `psvlist_size' + 1
@@ -388,8 +409,8 @@ if "$quality" == "on" {
 							}
 						}
 						
-						// if the psv registration number IS on the list, mark the 
-						//   records as duplicates
+						// if the psv registration number IS on the list, mark  
+						//   the records as duplicates
 						else {
 							local group_ct = same_date_grouped[`i']
 							
@@ -398,20 +419,23 @@ if "$quality" == "on" {
 								display "putting '`group_ct'' in record `j'"
 							}
 							
-							replace duplicates_grouped = same_date_grouped[`i'] if _n == `j'
-							local position : list posof "`psvregistration_k_j'" in psvlist
+							replace duplicates_grouped = /// 
+								same_date_grouped[`i'] if _n == `j'
+							local position : list posof ///
+								"`psvregistration_k_j'" in psvlist
 							local psv_counter = 0
 							
 							if "$debug" == "on" {
 								display "position: `position'"
 							}
 							
-							// search the list for the matching psv registration number
-							//   and use its position to determine which of the other
-							//   records with the same date is the one with the matching
-							//   psv registration number
+							// search the list for the matching psv registration 
+							//   number and use its position to determine which 
+							//   of the other records with the same date is the 
+							//   one with the matching psv registration number
 							forvalues m = `i'/`j' {
-								local psv_counter = `psv_counter' + psvcount[`m']
+								local psv_counter = `psv_counter' + ///
+									psvcount[`m']
 								
 								if "$debug" == "on" {
 									display "psv_counter: `psv_counter'"
@@ -422,16 +446,18 @@ if "$quality" == "on" {
 									local group_ct = same_date_grouped[`i']
 									
 									if "$debug" == "on" {
-										display "putting '`group_ct'' in record `m'" 
+										display ///
+											"putting '`group_ct'' in record `m'" 
 									}
 									
-									replace duplicates_grouped = same_date_grouped[`i'] if _n == `m'
+									replace duplicates_grouped = ///
+										same_date_grouped[`i'] if _n == `m'
 									continue, break
 								}
 							}
 							
-							// then add the duplicate to the list anyways so future
-							//   counts are consistent
+							// then add the duplicate to the list anyways so 
+							//   future counts are consistent
 							local psvlist `psvlist' `psvregistration_k_j'
 							local psvlist_size = `psvlist_size' + 1
 						}
@@ -445,9 +471,10 @@ if "$quality" == "on" {
 		
 		// using the previously determined and marked duplicate records, use
 		//   the duplicates function to generate a variable containing the 
-		//   traditional values expected in the duplicates variable (contained in
-		//   duplicates_amt)
-		duplicates tag duplicates_grouped if duplicates_grouped != 0, gen(duplicates_amt)
+		//   traditional values expected in the duplicates variable (contained 
+		//   in duplicates_amt)
+		duplicates tag duplicates_grouped if duplicates_grouped != 0, /// 
+			gen(duplicates_amt)
 		
 		drop if duplicates_grouped == 0
 		gsort - duplicates_grouped psvregistration1 submissiondate
@@ -465,16 +492,22 @@ if "$quality" == "on" {
 		local duplicate_pct = `duplicate_count'/`total_records'
 		
 		// export to excel
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("Quality")
+		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+			sheet("Quality")
 		
 		putexcel `export_col'9 = `duplicate_count'
 		putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
 		
 		// These only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			putexcel A9 = "This is the amount of records that are likely duplicates of another", italic font("Calibri (Body)", 11, red)
-			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" if duplicates_grouped != 0, sheetreplace sheet("_export dups") firstrow(var)
-			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet("_export dups")
+			putexcel A9 = ///
+				"This is the amount of records that are likelyduplicates of another", ///
+				italic font("Calibri (Body)", 11, red)
+			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				if duplicates_grouped != 0, sheetreplace /// 
+				sheet("_export dups") firstrow(var)
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", /// 
+				modify sheet("_export dups")
 			local dup_highlight_length = `dups_incl_originals'+1
 			putexcel (A1:GJ1), bold border(bottom, thin, black)
 		
@@ -491,10 +524,14 @@ if "$quality" == "on" {
 				}
 				
 				if (mod(`loops', 2) == 0) {
-					putexcel (A`highlight_start':GJ`highlight_end'), fpattern(solid, "198 242 255", "198 242 255") overwritefmt
+					putexcel (A`highlight_start':GJ`highlight_end'), /// 
+						fpattern(solid, "198 242 255", "198 242 255") ///
+						overwritefmt
 				}
 				else if (mod(`loops', 2) == 1) {
-					putexcel (A`highlight_start':GJ`highlight_end'), fpattern(solid, "255 222 173", "255 222 173") overwritefmt
+					putexcel (A`highlight_start':GJ`highlight_end'), /// 
+						fpattern(solid, "255 222 173", "255 222 173") ///
+						overwritefmt
 				}
 		
 				local i = `i' + duplicates_amt[`i'] + 1
