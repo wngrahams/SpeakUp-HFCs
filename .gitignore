@@ -3,3 +3,6 @@
 .DS_Store
 ~*
 *.dta
+*.jpg
+*.jpeg
+*.gph
