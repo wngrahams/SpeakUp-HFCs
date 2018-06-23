@@ -35,12 +35,12 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "off"
-global enum_graph "on"
-global enums "off"
-global quality "off"
+global pairs "on"
+global enum_graph "off"
+global enums "on"
+global quality "on"
 global debug "off"
-global fill_in_previous_dates "off" // explanation found in quality section
+global fill_in_previous_dates "on" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -89,17 +89,18 @@ if "$precleaning" == "on" {
 if "$pairs" == "on" {	
 
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
-
+	
 	preserve 
 	
 	// generate a string variable for each date
-	gen entrydate = dofc(submissiondate)
+	gen entrydate = dofc(starttime)
 	format entrydate %td
-	gen sub_date_day = day(entrydate)
-	gen sub_date_month = month(entrydate)
-	tostring sub_date_day, replace
-	tostring sub_date_month, replace
-	gen date_str = sub_date_day + "_" + sub_date_month + "_2018"
+	gen start_date_day = day(entrydate)
+	gen start_date_month = month(entrydate)
+	tostring start_date_day, replace
+	tostring start_date_month, replace
+	gen date_str = start_date_day + "_" + start_date_month + "_2018"
+	
 	
 	// sort bu userid and entrydate
 	sort userid entrydate
@@ -112,6 +113,11 @@ if "$pairs" == "on" {
 	
 	// reshape such that data shows amount of entries per userid per date
 	reshape wide entry_amt, i(userid) j(date_str) string
+	
+	// generate variables for empty sundays
+	gen entry_amt17_6_2018 = 0
+	order _all, alpha
+	order userid, first
 	
 	// generate variables to distinguish supervisors and interns
 	gen intern = 0
@@ -353,6 +359,7 @@ if ("$enum_graph" == "on") {
 		14 "14:00" 15 "15:00" 16 "16:00" 17 "17:00" 18 "18:00") ///
 		ylabel(1(1)`number_team', valuelabel angle(0))
 	
+	
 	if "`c(username)'" == "grahamstubbs" {
 		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda"
 		graph export "Team_`team_choice'_`title_d'_`title_m'_`title_y'.png", as(png)
@@ -539,22 +546,22 @@ if "$quality" == "on" {
 			// as the outer loop iterates, this (temporaritly) drops all obs 
 			//  submitted for dates after the date the current iteration of the 
 			//  loop is looking at
-			gen sub_date_num = dofc(submissiondate)
-			format sub_date_num %td
-			gen sub_date_day = day(sub_date_num)
-			gen sub_date_month = month(sub_date_num)
+			gen start_date_num = dofc(starttime)
+			format start_date_num %td
+			gen start_date_day = day(start_date_num)
+			gen start_date_month = month(start_date_num)
 			
 			// this is only valid for June and July with a start date of June 14
 			// this should be changed if this code is used for another purpose
 			if (`HFC_loop_num' <= 17) {
-				drop if sub_date_day > `HFC_loop_num' + 13 | sub_date_month > 6
+				drop if start_date_day > `HFC_loop_num' + 13 | start_date_month > 6
 			}
 			else {
-				drop if sub_date_day > `HFC_loop_num' - 17 & sub_date_month == 7
+				drop if start_date_day > `HFC_loop_num' - 17 & start_date_month == 7
 			}
 			
 			// drop unneeded vars
-			drop sub_date_day sub_date_month sub_date_num
+			drop start_date_day start_date_month start_date_num
 		}
 	
 		*************************** get Total records **************************
@@ -858,7 +865,7 @@ if "$quality" == "on" {
 			gen(duplicates_amt)
 		
 		drop if duplicates_grouped == 0
-		gsort - duplicates_grouped psvregistration1 submissiondate
+		gsort - duplicates_grouped psvregistration1 starttime
 		
 		// get number and percent of duplicates
 		count
