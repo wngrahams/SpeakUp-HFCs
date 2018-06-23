@@ -35,7 +35,7 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "on"
+global pairs "off"
 global enum_graph "on"
 global enums "off"
 global quality "off"
@@ -235,8 +235,8 @@ if ("$enum_graph" == "on") {
 	
 	// CHOOSE WHICH TEAM IS GRAPHED HERE:
 // 	local team_choice = "E"
-	local team_choice = "W"
-// 	local team_choice = "N"
+// 	local team_choice = "W"
+	local team_choice = "N"
 // 	local team_choice = "C"
 // 	local team_choice = "K"
 // 	local team_choice = "U"
@@ -248,7 +248,7 @@ if ("$enum_graph" == "on") {
 	
 	// SELECT DATE OF GRAPH HERE
 	gen startdate=dofc(starttime)
-	keep if startdate==mdy(06,15,2018) // THIS IS THE VALUE TO CHANGE
+	keep if startdate==mdy(06,19,2018) // THIS IS THE VALUE TO CHANGE
 	
 	keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
 		userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
@@ -332,7 +332,7 @@ if ("$enum_graph" == "on") {
 		label list userid2
 		label define userid2 1 "Julie G." 2 "Samuel Basoga" 3 "Ritah K." 4 ///
 			"Reagan K." 5 "Allan Erema S." 6 "Kizito K." 7 ///
-			"Kaunda(Kakaya) E." 8 "Dora A.", modify
+			"Dora A." 8 "Agnes N.", modify
 		local number_team = 8
 	}
 	/*intern*/
@@ -353,6 +353,11 @@ if ("$enum_graph" == "on") {
 		14 "14:00" 15 "15:00" 16 "16:00" 17 "17:00" 18 "18:00") ///
 		ylabel(1(1)`number_team', valuelabel angle(0))
 	
+	if "`c(username)'" == "grahamstubbs" {
+		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda"
+		graph export "Team_`team_choice'_`title_d'_`title_m'_`title_y'.png", as(png)
+		cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs"
+	}
 	drop startdate starttime2
 	
 	restore
