@@ -236,11 +236,11 @@ if ("$enum_graph" == "on") {
 	// CHOOSE WHICH TEAM IS GRAPHED HERE:
 // 	local team_choice = "E"
 // 	local team_choice = "W"
-	local team_choice = "N"
+// 	local team_choice = "N"
 // 	local team_choice = "C"
 // 	local team_choice = "K"
 // 	local team_choice = "U"
-// 	local team_choice = "I"
+	local team_choice = "I"
 
 	if ("$debug" == "on") {
 		disp "The chosen team is: `team_choice'"
@@ -250,18 +250,18 @@ if ("$enum_graph" == "on") {
 	gen startdate=dofc(starttime)
 	keep if startdate==mdy(06,19,2018) // THIS IS THE VALUE TO CHANGE
 	
+	gen date_HRF = dofc(starttime)
+	format date_HRF %td
+	local title_d = day(date_HRF)
+	local title_m = month(date_HRF)
+	local title_y = year(date_HRF)
+	
 	keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
 		userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
 		userid == "`team_choice'5" | userid == "`team_choice'6" | ///
 		userid == "`team_choice'7" | userid == "`team_choice'8" | ///
 		userid == "`team_choice'9" 
 	gen starttime2 = hh(starttime)+mm(starttime)/60+ss(starttime)/3600
-	
-	gen date_HRF = dofc(starttime)
-	format date_HRF %td
-	local title_d = day(date_HRF)
-	local title_m = month(date_HRF)
-	local title_y = year(date_HRF)
 	
 	// generate missing enumerators
 	local max_team = 9
@@ -341,7 +341,7 @@ if ("$enum_graph" == "on") {
 			userid == "I7" | userid == "I8" | userid == "I9" 
 		encode userid, generate (userid2)
 		label list userid2
-		label define userid2 1 "Graham S." 2 "Jacklyn P." 3 "Yuou W.", modify
+		label define userid2 1 "Graham S." 2 "Yuou W." 3 "Jacklyn P.", modify
 		local number_team = 3
 	}
 	
