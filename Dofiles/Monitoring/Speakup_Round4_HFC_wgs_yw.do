@@ -36,10 +36,11 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 *Switches
 global precleaning "on"
 global pairs "on"
-global enums "on"
-global quality "on"
+global enum_graph "on"
+global enums "off"
+global quality "off"
 global debug "off"
-global fill_in_previous_dates "on" // explanation found in quality section
+global fill_in_previous_dates "off" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -220,7 +221,14 @@ if "$pairs" == "on" {
 		
 	restore
 	
+}
+	
 ***********************graph******************************
+
+if ("$enum_graph" == "on") {
+
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
+
 	preserve
 	format starttime %tcHH:MM:SS
 	format endtime %tcHH:MM:SS
