@@ -356,7 +356,7 @@ if ("$enum_graph" == "on") {
 	if "`c(username)'" == "grahamstubbs" {
 		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda"
 		graph export "Team_`team_choice'_`title_d'_`title_m'_`title_y'.png", as(png)
-		cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs"
+		cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs/Graphs"
 	}
 	drop startdate starttime2
 	
