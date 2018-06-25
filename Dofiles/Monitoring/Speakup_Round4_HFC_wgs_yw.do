@@ -35,12 +35,12 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "on"
+global pairs "off"
 global enum_graph "off"
 global enums "on"
 global quality "on"
 global debug "off"
-global fill_in_previous_dates "on" // explanation found in quality section
+global fill_in_previous_dates "off" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -654,7 +654,7 @@ if "$quality" == "on" {
 			local hr_highlight_length = `hitandrun_amt'+1
 			putexcel (AA1:AA`hr_highlight_length'), ///
 				fpattern(solid, lightpink, lightpink) overwritefmt
-			putexcel (A1:GF1), bold border(bottom, thin, black)
+			putexcel (A1:GU1), bold border(bottom, thin, black)
 		}
 		
 		*********** Flag and export all entries with potential issues **********
@@ -696,7 +696,7 @@ if "$quality" == "on" {
 			local flags_highlight_length = `flags_count' + 1
 			putexcel (AM1:AM`flags_highlight_length'), ///
 				fpattern(solid, lightpink, lightpink) overwritefmt
-			putexcel (A1:GH1), bold border(bottom, thin, black)
+			putexcel (A1:GV1), bold border(bottom, thin, black)
 		}
 		
 		// drop var that is no longer needed
@@ -764,7 +764,7 @@ if "$quality" == "on" {
 				while `k' <= psvcount[`j'] {
 				
 					local psvregistration_k_j = psvregistration`k'[`j']
-					if "$debug" == "on" {
+					if ("$debug" == "on") {
 							display ///
 								"psvregistration`k'[`j']: `psvregistration_k_j'" 
 					}
@@ -825,7 +825,7 @@ if "$quality" == "on" {
 								local psv_counter = `psv_counter' + ///
 									psvcount[`m']
 								
-								if "$debug" == "on" {
+								if ("$debug" == "on") {
 									display "psv_counter: `psv_counter'"
 									display "m: `m'"
 								}
@@ -833,7 +833,7 @@ if "$quality" == "on" {
 								if (`psv_counter' >= `position') {
 									local group_ct = same_date_grouped[`i']
 									
-									if "$debug" == "on" {
+									if ("$debug" == "on") {
 										display ///
 											"putting '`group_ct'' in record `m'" 
 									}
@@ -897,7 +897,7 @@ if "$quality" == "on" {
 			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", /// 
 				modify sheet("_export dups")
 			local dup_highlight_length = `dups_incl_originals'+1
-			putexcel (A1:GJ1), bold border(bottom, thin, black)
+			putexcel (A1:GY1), bold border(bottom, thin, black)
 		
 			// highlight exported duplicates to make viewing easier
 			local i = 1
@@ -908,16 +908,16 @@ if "$quality" == "on" {
 				local highlight_end = `highlight_start' + `highlight_length'
 				
 				if ("$debug" == "on") {
-					display "Higlighting from A`highlight_start' to GJ`highlight_end'"
+					display "Higlighting from A`highlight_start' to GY`highlight_end'"
 				}
 				
 				if (mod(`loops', 2) == 0) {
-					putexcel (A`highlight_start':GJ`highlight_end'), /// 
+					putexcel (A`highlight_start':GY`highlight_end'), /// 
 						fpattern(solid, "198 242 255", "198 242 255") ///
 						overwritefmt
 				}
 				else if (mod(`loops', 2) == 1) {
-					putexcel (A`highlight_start':GJ`highlight_end'), /// 
+					putexcel (A`highlight_start':GY`highlight_end'), /// 
 						fpattern(solid, "255 222 173", "255 222 173") ///
 						overwritefmt
 				}
