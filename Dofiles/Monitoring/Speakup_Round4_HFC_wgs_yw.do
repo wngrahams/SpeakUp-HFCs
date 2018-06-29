@@ -116,30 +116,24 @@ if "$pairs" == "on" {
 	
 	// generate variables for empty sundays
 	gen entry_amt17_6_2018 = 0
+	gen entry_amt24_6_2018 = 0
 	order _all, alpha
 	order userid, first
 	
-	// generate variables to distinguish supervisors, interns, and unknown enums
-	gen first_letter = substr(userid, 1, 1)
+	// generate variables to distinguish supervisors and interns
 	gen intern = 0
-	replace intern = 1 if (first_letter == "I")
+	replace intern = 1 if (substr(userid, 1, 1) == "I")
 	gen supervisor = 0
 	replace supervisor = 1 if (substr(userid, 2, 1) == "1" & intern != 1)
-	gen unknown_enum = 0
-	replace unknown_enum = 1 if (first_letter != "I" & /// 
-		first_letter != "C" & first_letter != "E" & ///
-		first_letter != "K" & first_letter != "N" & ///
-		first_letter != "U" & first_letter != "W")
 	
 	// replace missing values with zeros for amount of entries on each date
 	foreach x of varlist entry_amt* {
 		replace `x' = 0 if missing(`x') 
 	}
 	
-	
 	// set labels for output
 	label var userid "User ID"
-	local number_of_days = c(k) - 5
+	local number_of_days = c(k) - 3
 	// this is only valid for June and July with a start date of June 14
 	// this should be changed if this code is used for another purpose
 	local last_day = 14 + `number_of_days' - 1
@@ -156,23 +150,15 @@ if "$pairs" == "on" {
 	// Export to excel
 	export excel userid entry_amt* ///
 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor != 1 & intern != 1 & unknown_enum != 1, ///
+		if supervisor != 1 & intern != 1, ///
 		sheetreplace sheet("Pairs") firstrow(varl) cell(A2)
 		
-	count if supervisor != 1 & intern != 1 & unknown_enum != 1
+	count if supervisor != 1 & intern != 1
 	local enum_ct = r(N)
-	local unkn_cell = `enum_ct' + 5
+	local sup_cell = `enum_ct' + 5
 	export excel userid entry_amt* ///
 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if unknown_enum == 1, ///
-		sheetmodify sheet("Pairs") firstrow(varl) cell(A`unkn_cell')
-	
-	count if unknown_enum == 1
-	local unkn_ct = r(N)
-	local sup_cell = `unkn_cell' + `unkn_ct' + 3
-	export excel userid entry_amt* ///
-		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor == 1 & intern != 1 & unknown_enum != 1, ///
+		if supervisor == 1 & intern != 1, ///
 		sheetmodify sheet("Pairs") firstrow(varl) cell(A`sup_cell')
 		
 	count if supervisor == 1
@@ -180,7 +166,7 @@ if "$pairs" == "on" {
 	local intern_cell = `sup_cell' + `sup_ct' + 3
 	export excel userid entry_amt* ///
 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor != 1 & intern == 1 & unknown_enum != 1, ///
+		if supervisor != 1 & intern == 1, ///
 		sheetmodify sheet("Pairs") firstrow(varl) cell(A`intern_cell')
 		
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
@@ -199,21 +185,13 @@ if "$pairs" == "on" {
 	}
 	putexcel (A2:`export_col'2), bold border(bottom, medium, black)
 	local enum_end = `enum_ct' + 2
-	putexcel (A2:A`enum_end'), border(right, medium, black)
-	
-	local unkn_title = `unkn_cell' - 1
-	putexcel A`unkn_title' = "Unknown IDs", bold overwritefmt
-	putexcel (A`unkn_cell':`export_col'`unkn_cell'), ///
-		bold border(bottom, medium, black)
-	local unkn_start = `unkn_cell'
-	local unkn_end = `unkn_ct' + `unkn_cell'
-	putexcel (A`unkn_start':A`unkn_end'), border(right, medium, black)
+	putexcel (A3:A`enum_end'), border(right, medium, black)
 	
 	local sup_title = `sup_cell' - 1
 	putexcel A`sup_title' = "Supervisors", bold overwritefmt
 	putexcel (A`sup_cell':`export_col'`sup_cell'), ///
 		bold border(bottom, medium, black)
-	local sup_start = `sup_cell'
+	local sup_start = `sup_cell' + 1
 	local sup_end = `sup_ct' + `sup_cell'
 	putexcel (A`sup_start':A`sup_end'), border(right, medium, black)
 		
@@ -236,6 +214,9 @@ if "$pairs" == "on" {
 			count if substr(userid, 1, 1) == `"`team_to_check'"' /// 
 				& substr(userid, 2, 1) != "1"
 			local team_size = r(N)
+			if (`"`team_to_check'"' == `"K"') {
+				local team_size = `team_size' + 1
+			}
 			local team_sizes `team_sizes' "`team_size'"
 		}
 	}
@@ -266,10 +247,10 @@ if ("$enum_graph" == "on") {
 // 	local team_choice = "E"
 // 	local team_choice = "W"
 // 	local team_choice = "N"
-// 	local team_choice = "C"
+	local team_choice = "C"
 // 	local team_choice = "K"
 // 	local team_choice = "U"
-	local team_choice = "I"
+// 	local team_choice = "I"
 
 	if ("$debug" == "on") {
 		disp "The chosen team is: `team_choice'"
@@ -277,7 +258,7 @@ if ("$enum_graph" == "on") {
 	
 	// SELECT DATE OF GRAPH HERE
 	gen startdate=dofc(starttime)
-	keep if startdate==mdy(06,19,2018) // THIS IS THE VALUE TO CHANGE
+	keep if startdate==mdy(06,25,2018) // THIS IS THE VALUE TO CHANGE
 	
 	gen date_HRF = dofc(starttime)
 	format date_HRF %td
