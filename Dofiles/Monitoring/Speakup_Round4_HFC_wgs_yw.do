@@ -35,8 +35,8 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "on"
-global enum_graph "off"
+global pairs "off"
+global enum_graph "on"
 global enums "off"
 global quality "off"
 global debug "off"
@@ -101,7 +101,6 @@ if "$pairs" == "on" {
 	tostring start_date_month, replace
 	gen date_str = start_date_day + "_" + start_date_month + "_2018"
 	
-	
 	// sort bu userid and entrydate
 	sort userid entrydate
 
@@ -115,6 +114,7 @@ if "$pairs" == "on" {
 	reshape wide entry_amt, i(userid) j(date_str) string
 	
 	// generate variables for empty sundays
+	// TODO automate this pls
 	gen entry_amt17_6_2018 = 0
 	gen entry_amt24_6_2018 = 0
 	order _all, alpha
@@ -247,8 +247,8 @@ if ("$enum_graph" == "on") {
 // 	local team_choice = "E"
 // 	local team_choice = "W"
 // 	local team_choice = "N"
-	local team_choice = "C"
-// 	local team_choice = "K"
+// 	local team_choice = "C"
+	local team_choice = "K"
 // 	local team_choice = "U"
 // 	local team_choice = "I"
 
@@ -266,11 +266,24 @@ if ("$enum_graph" == "on") {
 	local title_m = month(date_HRF)
 	local title_y = year(date_HRF)
 	
-	keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
-		userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
-		userid == "`team_choice'5" | userid == "`team_choice'6" | ///
-		userid == "`team_choice'7" | userid == "`team_choice'8" | ///
-		userid == "`team_choice'9" 
+	sort userid
+	
+	// TODO: make L2 show up here
+	if ("`team_choice'" != "K") {
+		keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
+			userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
+			userid == "`team_choice'5" | userid == "`team_choice'6" | ///
+			userid == "`team_choice'7" | userid == "`team_choice'8" | ///
+			userid == "`team_choice'9" 
+	}
+	else {
+		keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
+			userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
+			userid == "`team_choice'5" | userid == "`team_choice'6" | ///
+			userid == "`team_choice'7" | userid == "`team_choice'8" | ///
+			userid == "`team_choice'9" | userid == "L2"
+	}
+		
 	gen starttime2 = hh(starttime)+mm(starttime)/60+ss(starttime)/3600
 	
 	// generate missing enumerators
@@ -304,8 +317,8 @@ if ("$enum_graph" == "on") {
 		label list userid2
 		label define userid2 1 "Joseline N." 2 "Peter K." 3 "Davis M." 4 /// 
 			"Doreen T." 5 "Kenneth Y." 6 "Anita K." 7 "Mary Clare K." 8 ///
-			"Irene(Atto) N.", modify
-		local number_team = 8
+			"Irene(Atto) N." 9 "Shadia", modify
+		local number_team = 9
 	}
 	/*Uganda*/	
 	if "`team_choice'"== "U" {
