@@ -35,8 +35,8 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "off"
-global enum_graph "on"
+global pairs "on"
+global enum_graph "off"
 global enums "off"
 global quality "off"
 global debug "off"
@@ -148,28 +148,28 @@ if "$pairs" == "on" {
 	}
 	
 	// Export to excel
-	export excel userid entry_amt* ///
-		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor != 1 & intern != 1, ///
-		sheetreplace sheet("Pairs") firstrow(varl) cell(A2)
+// 	export excel userid entry_amt* ///
+// 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+// 		if supervisor != 1 & intern != 1, ///
+// 		sheetreplace sheet("Pairs") firstrow(varl) cell(A2)
 		
-	count if supervisor != 1 & intern != 1
-	local enum_ct = r(N)
-	local sup_cell = `enum_ct' + 5
-	export excel userid entry_amt* ///
-		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor == 1 & intern != 1, ///
-		sheetmodify sheet("Pairs") firstrow(varl) cell(A`sup_cell')
+// 	count if supervisor != 1 & intern != 1
+// 	local enum_ct = r(N)
+// 	local sup_cell = `enum_ct' + 5
+// 	export excel userid entry_amt* ///
+// 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+// 		if supervisor == 1 & intern != 1, ///
+// 		sheetmodify sheet("Pairs") firstrow(varl) cell(A`sup_cell')
 		
-	count if supervisor == 1
-	local sup_ct = r(N)
-	local intern_cell = `sup_cell' + `sup_ct' + 3
-	export excel userid entry_amt* ///
-		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor != 1 & intern == 1, ///
-		sheetmodify sheet("Pairs") firstrow(varl) cell(A`intern_cell')
+// 	count if supervisor == 1
+// 	local sup_ct = r(N)
+// 	local intern_cell = `sup_cell' + `sup_ct' + 3
+// 	export excel userid entry_amt* ///
+// 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+// 		if supervisor != 1 & intern == 1, ///
+// 		sheetmodify sheet("Pairs") firstrow(varl) cell(A`intern_cell')
 		
-	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", replace ///
 			sheet("Pairs")
 			
 	putexcel A1 = "Enumerators", bold overwritefmt
@@ -183,29 +183,29 @@ if "$pairs" == "on" {
 		local export_col = char(`export_col_num' - 26)
 		local export_col = "A" + "`export_col'"
 	}
-	putexcel (A2:`export_col'2), bold border(bottom, medium, black)
-	local enum_end = `enum_ct' + 2
-	putexcel (A3:A`enum_end'), border(right, medium, black)
+// 	putexcel (A2:`export_col'2), bold border(bottom, medium, black)
+// 	local enum_end = `enum_ct' + 2
+// 	putexcel (A3:A`enum_end'), border(right, medium, black)
 	
-	local sup_title = `sup_cell' - 1
-	putexcel A`sup_title' = "Supervisors", bold overwritefmt
-	putexcel (A`sup_cell':`export_col'`sup_cell'), ///
-		bold border(bottom, medium, black)
-	local sup_start = `sup_cell' + 1
-	local sup_end = `sup_ct' + `sup_cell'
-	putexcel (A`sup_start':A`sup_end'), border(right, medium, black)
+// 	local sup_title = `sup_cell' - 1
+// 	putexcel A`sup_title' = "Supervisors", bold overwritefmt
+// 	putexcel (A`sup_cell':`export_col'`sup_cell'), ///
+// 		bold border(bottom, medium, black)
+// 	local sup_start = `sup_cell' + 1
+// 	local sup_end = `sup_ct' + `sup_cell'
+// 	putexcel (A`sup_start':A`sup_end'), border(right, medium, black)
 		
-	local intern_title = `intern_cell' - 1
-	putexcel A`intern_title' = "Interns", bold overwritefmt
-	putexcel (A`intern_cell':`export_col'`intern_cell'), ///
-		bold border(bottom, medium, black)
-	local intern_start = `intern_cell' + 1
-	count if intern == 1
-	local intern_ct = r(N)
-	local intern_end = `intern_ct' + `intern_cell'
-	putexcel (A`intern_start':A`intern_end'), border(right, medium, black)
+// 	local intern_title = `intern_cell' - 1
+// 	putexcel A`intern_title' = "Interns", bold overwritefmt
+// 	putexcel (A`intern_cell':`export_col'`intern_cell'), ///
+// 		bold border(bottom, medium, black)
+// 	local intern_start = `intern_cell' + 1
+// 	count if intern == 1
+// 	local intern_ct = r(N)
+// 	local intern_end = `intern_ct' + `intern_cell'
+// 	putexcel (A`intern_start':A`intern_end'), border(right, medium, black)
 	
-	local teams "I" "C" "E" "K" "N" "U" "W"
+	local teams "I" "C" "E" "K" "L" "N" "U" "W"
 	local team_sizes = ""
 	local team_ct : list sizeof teams
 	forvalues i = 1/`team_ct' {
@@ -214,20 +214,134 @@ if "$pairs" == "on" {
 			count if substr(userid, 1, 1) == `"`team_to_check'"' /// 
 				& substr(userid, 2, 1) != "1"
 			local team_size = r(N)
-			if (`"`team_to_check'"' == `"K"') {
-				local team_size = `team_size' + 1
+			
+			if ("$debug" == "on") {
+				display "Team size: `team_size'"
 			}
 			local team_sizes `team_sizes' "`team_size'"
 		}
 	}
 	
+	local enum_cell = 2
+	gen first_letter = substr(userid, 1, 1)
+	forvalues i = 2/`team_ct' {
+		local enum_dist `: word `i' of `team_sizes''
+		local team_to_check `: word `i' of `teams''
+		
+		if (`i' == 2) {
+			export excel userid entry_amt* ///
+				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				if supervisor != 1 & first_letter == `"`team_to_check'"', ///
+				sheetmodify sheet("Pairs") firstrow(varl) cell(A`enum_cell')
+				
+			local enum_cell = `enum_cell' + `enum_dist' + 2
+			
+		}
+		else {
+			export excel userid entry_amt* ///
+				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				if supervisor != 1 & first_letter == `"`team_to_check'"', ///
+				sheetmodify sheet("Pairs") cell(A`enum_cell')
+				
+			if (`i' == 4) {
+				local enum_cell = `enum_cell' + `enum_dist'
+			}
+			else {
+				local enum_cell = `enum_cell' + `enum_dist' + 1
+			}
+		}
+		
+		local total_cell = 0
+		if (`i' != 4) {
+			local total_cell = `enum_cell' - 1
+			putexcel A`total_cell' = "TOTAL", bold
+		}
+	}
+	
 	local hl_start = 2
 	forvalues i = 2/`team_ct' {
-		local hl_dist `: word `i' of `team_sizes''
-		local hl_start = `hl_start' + `hl_dist'
-		putexcel (A`hl_start':`export_col'`hl_start'), ///
-			border(bottom, thin, black) 
+		local hl_dist `: word `i' of `team_sizes'' + 1
+		local hl_end = `hl_start' + `hl_dist'
+		
+		if (`i' != 5) {
+			putexcel (A`hl_start':`export_col'`hl_start'), ///
+				border(bottom, thin, black) 
+				
+		}
+		else {
+			local hl_end = `hl_end' - 1
+		}
+		
+		local hl_start = `hl_end'
+			
 	}
+	
+	putexcel (A`hl_start':`export_col'`hl_start'), ///
+			border(bottom, thin, black) 
+			
+			
+	encode first_letter, generate(first_char)
+	replace first_char = 4 if first_char == 5
+			
+	// Mata section:
+	mata
+	
+	st_view(Z=., ., ("entry_amt*", "first_char"))
+	
+	B = xl()
+	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
+	B.set_sheet("Pairs")
+	
+	B.set_mode("open")
+	
+	sum_start = 3
+	sum_end = 3
+	for (j=1; j<=rows(Z); j++) {
+		
+		team_group = Z[j, cols(Z)]
+		test_group = j
+		
+		if (team_group != 3) {
+		
+			while (Z[test_group, cols(Z)] == team_group & test_group < rows(Z)) {
+				test_group++
+			}
+			
+			if (j==1) {
+				sum_end = test_group + sum_start - sum_end
+			}
+			else if (team_group >= 4 & team_group != Z[test_group, cols(Z)]) {
+				sum_end = test_group + sum_start - sum_end - 3
+			}
+			else {
+				sum_end = test_group + sum_start - sum_end - 1
+			}
+		
+			for(i=2; i<=(cols(Z)); i++) {
+				col_val = char(65 + i - 1)
+				formula = "SUM(" + col_val + strofreal(sum_start) + ":" + col_val + strofreal(sum_end) + ")"
+				B.put_formula(sum_end+1, i, formula)
+				B.set_font_bold(sum_end+1, i, "on")
+			}
+			
+			col_val = char(65 + cols(Z)-1)
+			total_formula = "SUM(B" + strofreal(sum_end+1) + ":" + col_val + strofreal(sum_end+1) + ")"
+			B.put_formula(sum_end+1, cols(Z)+1, total_formula)
+			B.set_font_bold(sum_end+1, cols(Z)+1, "on")
+			
+			sum_start = sum_end + 2
+			j = test_group
+		
+		}
+		else {
+			j = j+2
+		}
+	}
+	
+	B.close_book()
+	
+	end
+	// End mata section
 		
 	restore
 	
