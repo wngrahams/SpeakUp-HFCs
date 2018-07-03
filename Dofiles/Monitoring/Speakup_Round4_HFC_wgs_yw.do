@@ -37,10 +37,10 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 global precleaning "on"
 global pairs "on"
 global enum_graph "off"
-global enums "on"
-global quality "on"
+global enums "off"
+global quality "off"
 global debug "off"
-global fill_in_previous_dates "on" // explanation found in quality section
+global fill_in_previous_dates "off" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -148,27 +148,6 @@ if "$pairs" == "on" {
 	}
 	
 	// Export to excel
-// 	export excel userid entry_amt* ///
-// 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-// 		if supervisor != 1 & intern != 1, ///
-// 		sheetreplace sheet("Pairs") firstrow(varl) cell(A2)
-		
-// 	count if supervisor != 1 & intern != 1
-// 	local enum_ct = r(N)
-// 	local sup_cell = `enum_ct' + 5
-// 	export excel userid entry_amt* ///
-// 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-// 		if supervisor == 1 & intern != 1, ///
-// 		sheetmodify sheet("Pairs") firstrow(varl) cell(A`sup_cell')
-		
-// 	count if supervisor == 1
-// 	local sup_ct = r(N)
-// 	local intern_cell = `sup_cell' + `sup_ct' + 3
-// 	export excel userid entry_amt* ///
-// 		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-// 		if supervisor != 1 & intern == 1, ///
-// 		sheetmodify sheet("Pairs") firstrow(varl) cell(A`intern_cell')
-		
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", replace ///
 			sheet("Pairs")
 			
@@ -183,27 +162,6 @@ if "$pairs" == "on" {
 		local export_col = char(`export_col_num' - 26)
 		local export_col = "A" + "`export_col'"
 	}
-// 	putexcel (A2:`export_col'2), bold border(bottom, medium, black)
-// 	local enum_end = `enum_ct' + 2
-// 	putexcel (A3:A`enum_end'), border(right, medium, black)
-	
-// 	local sup_title = `sup_cell' - 1
-// 	putexcel A`sup_title' = "Supervisors", bold overwritefmt
-// 	putexcel (A`sup_cell':`export_col'`sup_cell'), ///
-// 		bold border(bottom, medium, black)
-// 	local sup_start = `sup_cell' + 1
-// 	local sup_end = `sup_ct' + `sup_cell'
-// 	putexcel (A`sup_start':A`sup_end'), border(right, medium, black)
-		
-// 	local intern_title = `intern_cell' - 1
-// 	putexcel A`intern_title' = "Interns", bold overwritefmt
-// 	putexcel (A`intern_cell':`export_col'`intern_cell'), ///
-// 		bold border(bottom, medium, black)
-// 	local intern_start = `intern_cell' + 1
-// 	count if intern == 1
-// 	local intern_ct = r(N)
-// 	local intern_end = `intern_ct' + `intern_cell'
-// 	putexcel (A`intern_start':A`intern_end'), border(right, medium, black)
 	
 	local teams "I" "C" "E" "K" "L" "N" "U" "W"
 	local team_sizes = ""
@@ -343,8 +301,6 @@ if "$pairs" == "on" {
 	fmt_rows = (3, rows(Z) + 2)
 	fmt_cols = (2, cols(Z))
 	B.set_number_format(fmt_rows, fmt_cols, "[Red][=0];[Black][>0]")
-	// this does nothing :(
-	B.set_fill_pattern(fmt_rows, fmt_cols, "solid", "[Salmon][=0];[White][>0]", "[Salmon][=0];[White][>0]")
 	
 	B.close_book()
 	
