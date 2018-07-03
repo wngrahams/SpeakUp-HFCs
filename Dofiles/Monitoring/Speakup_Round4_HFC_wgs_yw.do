@@ -37,10 +37,10 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 global precleaning "on"
 global pairs "on"
 global enum_graph "off"
-global enums "off"
-global quality "off"
+global enums "on"
+global quality "on"
 global debug "off"
-global fill_in_previous_dates "off" // explanation found in quality section
+global fill_in_previous_dates "on" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -338,10 +338,55 @@ if "$pairs" == "on" {
 		}
 	}
 	
+	B.set_column_width(2, cols(Z), 10)
+	
+	fmt_rows = (3, rows(Z) + 2)
+	fmt_cols = (2, cols(Z))
+	B.set_number_format(fmt_rows, fmt_cols, "[Red][=0];[Black][>0]")
+	// this does nothing :(
+	B.set_fill_pattern(fmt_rows, fmt_cols, "solid", "[Salmon][=0];[White][>0]", "[Salmon][=0];[White][>0]")
+	
 	B.close_book()
 	
 	end
 	// End mata section
+	
+	putexcel (A2:`export_col'2), bold border(bottom, medium, black) overwritefmt
+	
+	count if supervisor != 1 & intern != 1
+	local enum_ct = r(N)
+	local enum_end = `enum_ct' + 8
+	putexcel (A2:A`enum_end'), border(right, medium, black)
+	
+	local sup_cell = `enum_end' + 3
+	local sup_title = `sup_cell' - 1
+	putexcel A`sup_title' = "Supervisors", bold
+	export excel userid entry_amt* ///
+		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+		if supervisor == 1 & intern != 1, ///
+		sheetmodify sheet("Pairs") firstrow(varl) cell(A`sup_cell')
+	putexcel (A`sup_cell':`export_col'`sup_cell'), ///
+		bold border(bottom, medium, black)
+		
+	count if supervisor == 1 & intern != 1
+	local sup_ct = r(N)
+	local sup_end = `sup_cell' + `sup_ct'
+	putexcel (A`sup_cell':A`sup_end'), border(right, medium, black)
+	
+	local intern_cell = `sup_end' + 3
+	local intern_title = `intern_cell' - 1
+	putexcel A`intern_title' = "Interns", bold
+	export excel userid entry_amt* ///
+		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+		if supervisor != 1 & intern == 1, ///
+		sheetmodify sheet("Pairs") firstrow(varl) cell(A`intern_cell')
+	putexcel (A`intern_cell':`export_col'`intern_cell'), ///
+		bold border(bottom, medium, black)
+	
+	count if supervisor != 1 & intern == 1
+	local intern_ct = r(N)
+	local intern_end = `intern_cell' + `intern_ct'
+	putexcel (A`intern_cell':A`intern_end'), border(right, medium, black)
 		
 	restore
 	
@@ -494,7 +539,7 @@ if ("$enum_graph" == "on") {
 	if "`c(username)'" == "grahamstubbs" {
 		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda"
 		graph export "Team_`team_choice'_`title_d'_`title_m'_`title_y'.png", as(png)
-		cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs/Graphs"
+		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda/Graphs"
 	}
 	drop startdate starttime2
 	
@@ -777,15 +822,19 @@ if "$quality" == "on" {
 		
 		// these only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+			export excel key deviceid subscriberid userid *region station /// 
+				stationreported substation tar_yn tar_number combined_date ///
+				time location locationcomment location_name psvcount ///
+				hitandrun image* submissiondate starttime endtime ///
+				"$OutputFolder/Monitoring_template_Rd4.xlsx" ///
 				if hitandrun == 1, sheetreplace sheet("_export H+R ") ///
 				firstrow(var)
 			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
 				modify sheet("_export H+R ")
 			local hr_highlight_length = `hitandrun_amt'+1
-			putexcel (AA1:AA`hr_highlight_length'), ///
+			putexcel (R1:R`hr_highlight_length'), ///
 				fpattern(solid, lightpink, lightpink) overwritefmt
-			putexcel (A1:GU1), bold border(bottom, thin, black)
+			putexcel (A1:Y1), bold border(bottom, thin, black)
 		}
 		
 		*********** Flag and export all entries with potential issues **********
@@ -1022,13 +1071,27 @@ if "$quality" == "on" {
 			putexcel A9 = ///
 				"This is the amount of records that are likelyduplicates of another", ///
 				italic font("Calibri (Body)", 11, red)
-			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+			export excel key deviceid subscriberid userid *region station /// 
+				stationreported substation tar_yn tar_number combined_date ///
+				time location locationcomment location_name psvcount ///
+				hitandrun causeofaccident natureofaccident deathcount ///
+				injurycount minor primary_source casefile additionalinfo ///
+				psv_number1 recorded1 plateissue1 writein1 psvregistration1 ///
+				vehicletype1 lobtype1 publicuse_yn1 privateuse1 ///
+				psv_number2 recorded2 plateissue2 writein2 psvregistration2 ///
+				vehicletype2 lobtype2 publicuse_yn2 privateuse2 ///
+				psv_number3 recorded3 plateissue3 writein3 psvregistration3 ///
+				vehicletype3 lobtype3 publicuse_yn3 privateuse3 ///
+				psv_number4 recorded4 plateissue4 writein4 psvregistration4 ///
+				vehicletype4 lobtype4 publicuse_yn4 privateuse4 ///
+				image* submissiondate starttime endtime /// 
+				"$OutputFolder/Monitoring_template_Rd4.xlsx" ///
 				if duplicates_grouped != 0, sheetreplace /// 
 				sheet("_export dups") firstrow(var)
 			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", /// 
 				modify sheet("_export dups")
 			local dup_highlight_length = `dups_incl_originals'+1
-			putexcel (A1:GY1), bold border(bottom, thin, black)
+			putexcel (A1:BQ1), bold border(bottom, medium, black)
 		
 			// highlight exported duplicates to make viewing easier
 			local i = 1
@@ -1043,12 +1106,12 @@ if "$quality" == "on" {
 				}
 				
 				if (mod(`loops', 2) == 0) {
-					putexcel (A`highlight_start':GY`highlight_end'), /// 
+					putexcel (A`highlight_start':BQ`highlight_end'), /// 
 						fpattern(solid, "198 242 255", "198 242 255") ///
 						overwritefmt
 				}
 				else if (mod(`loops', 2) == 1) {
-					putexcel (A`highlight_start':GY`highlight_end'), /// 
+					putexcel (A`highlight_start':BQ`highlight_end'), /// 
 						fpattern(solid, "255 222 173", "255 222 173") ///
 						overwritefmt
 				}
