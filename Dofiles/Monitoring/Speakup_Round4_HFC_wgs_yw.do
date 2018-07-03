@@ -689,17 +689,19 @@ if "$quality" == "on" {
 	if ("$fill_in_previous_dates" == "on") {
 		// this is only valid for June and July with a start date of June 14
 		// this should be changed if this code is used for another purpose
-		gen date_num = substr("$today", 1, 2)
-		gen month_str = substr("$today", 4, 3)
-		gen month_num = "0"
-		if (month_str == "Jun") {
-			replace month_num = "6"
+		quietly {
+			gen date_num = substr("$today", 1, 2)
+			gen month_str = substr("$today", 4, 3)
+			gen month_num = "0"
+			if (month_str == "Jun") {
+				replace month_num = "6"
+			}
+			if (month_str == "Jul") {
+				replace month_num = "7"
+			}
+			destring date_num, replace
+			destring month_num, replace
 		}
-		if (month_str == "Jul") {
-			replace month_num = "7"
-		}
-		destring date_num, replace
-		destring month_num, replace
 		local loop_end = 0
 		if (month_num == 6) {
 			local loop_end = date_num - 13
@@ -752,10 +754,12 @@ if "$quality" == "on" {
 			local export_col_num = `HFC_loop_num' + 13 + 53
 		}
 		else {
-			gen date_num = substr("$today", 1, 2)
-			destring date_num, replace
-			local export_col_num = date_num + 53
-			drop date_num
+			quietly {
+				gen date_num = substr("$today", 1, 2)
+				destring date_num, replace
+				local export_col_num = date_num + 53
+				drop date_num
+			}
 		}
 		
 		// Ensure column loops to AA after Z
@@ -768,20 +772,22 @@ if "$quality" == "on" {
 		}
 		
 		// export to excel
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+		quietly putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
 			sheet("Quality")
 		
 		// this only needs to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			putexcel A2 = "Summary of Potential Errors", bold
-			putexcel B4 = "Total Records"
-			putexcel B6 = "# H+R accidents"
-			putexcel B7 = "% of H+R accidents"
-			putexcel B9 = "# duplicate accidents"
-			putexcel B10 = "% of duplicate accidents"
-			putexcel B12 = "# flags from comment"
-			putexcel B13 = "% flags from comment"
-			putexcel (B4:B13), border(right, medium, black)
+			quietly {
+				putexcel A2 = "Summary of Potential Errors", bold
+				putexcel B4 = "Total Records"
+				putexcel B6 = "# H+R accidents"
+				putexcel B7 = "% of H+R accidents"
+				putexcel B9 = "# duplicate accidents"
+				putexcel B10 = "% of duplicate accidents"
+				putexcel B12 = "# flags from comment"
+				putexcel B13 = "% flags from comment"
+				putexcel (B4:B13), border(right, medium, black)
+			}
 		}
 		if ("$debug" == "on") {
 			disp "Today: $today"
@@ -805,20 +811,23 @@ if "$quality" == "on" {
 		else {
 			local date_str = "$today"
 		}
-		putexcel `export_col'3 = "`date_str'", bold ///
-			border(bottom, medium, black) font("Calibri (Body)", 11, black) ///
-			overwritefmt
-		putexcel `export_col'4 = `total_records'
 		
-		
-		/* get number and percent of hit&runs */
-		count if hitandrun == 1
-		local hitandrun_amt = r(N)
-		local hitandrun_pct = `hitandrun_amt'/`total_records'
-		
-		// export to excel
-		putexcel `export_col'6 = `hitandrun_amt'
-		putexcel `export_col'7 = (`hitandrun_pct'), nformat(percent_d2)	
+		quietly {
+			putexcel `export_col'3 = "`date_str'", bold ///
+				border(bottom, medium, black) font("Calibri (Body)", 11, black) ///
+				overwritefmt
+			putexcel `export_col'4 = `total_records'
+			
+			
+			/* get number and percent of hit&runs */
+			count if hitandrun == 1
+			local hitandrun_amt = r(N)
+			local hitandrun_pct = `hitandrun_amt'/`total_records'
+			
+			// export to excel
+			putexcel `export_col'6 = `hitandrun_amt'
+			putexcel `export_col'7 = (`hitandrun_pct'), nformat(percent_d2)	
+		}
 		
 		// these only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
@@ -826,7 +835,7 @@ if "$quality" == "on" {
 				stationreported substation tar_yn tar_number combined_date ///
 				time location locationcomment location_name psvcount ///
 				hitandrun image* submissiondate starttime endtime ///
-				"$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
 				if hitandrun == 1, sheetreplace sheet("_export H+R ") ///
 				firstrow(var)
 			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
@@ -845,11 +854,11 @@ if "$quality" == "on" {
 		gen additionalinfo_lower = lower(additionalinfo)
 		
 		// remove punctuation
-		replace additionalinfo_lower = ///
+		quietly replace additionalinfo_lower = ///
 			subinstr(additionalinfo_lower, ".", "", .)
 		
 		// flag entries that may contain something worth checking
-		replace potential_issues = 1 if (additionalinfo_lower != "" ///
+		quietly replace potential_issues = 1 if (additionalinfo_lower != "" ///
 			& additionalinfo_lower != "none" & additionalinfo_lower != "no" ///
 			& additionalinfo_lower != "n/a" & additionalinfo_lower != "nothing")
 		
@@ -862,21 +871,25 @@ if "$quality" == "on" {
 		local flags_pct = `flags_count'/`total_records'
 		
 		// export to excel
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
-			sheet("Quality")
-		putexcel `export_col'12 = `flags_count'
-		putexcel `export_col'13 = `flags_pct', nformat(percent_d2)
+		quietly {
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+				sheet("Quality")
+			putexcel `export_col'12 = `flags_count'
+			putexcel `export_col'13 = `flags_pct', nformat(percent_d2)
+		}
 		
 		if (`HFC_loop_num' == `loop_end') {
-			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-				if potential_issues==1, sheetreplace sheet("_export flags") ///
-				firstrow(var)
-			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
-				modify sheet("_export flags")
-			local flags_highlight_length = `flags_count' + 1
-			putexcel (AM1:AM`flags_highlight_length'), ///
-				fpattern(solid, lightpink, lightpink) overwritefmt
-			putexcel (A1:GV1), bold border(bottom, thin, black)
+			quietly {
+				export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+					if potential_issues==1, sheetreplace sheet("_export flags") ///
+					firstrow(var)
+				putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
+					modify sheet("_export flags")
+				local flags_highlight_length = `flags_count' + 1
+				putexcel (AM1:AM`flags_highlight_length'), ///
+					fpattern(solid, lightpink, lightpink) overwritefmt
+				putexcel (A1:GV1), bold border(bottom, thin, black)
+			}
 		}
 		
 		// drop var that is no longer needed
@@ -907,7 +920,7 @@ if "$quality" == "on" {
 				// assign each record on the same date a matching value in
 				//   same_date_grouped
 				while `j' <= (`i' + `amt_to_check') {
-					replace same_date_grouped = `counter' if _n == `j'
+					quietly replace same_date_grouped = `counter' if _n == `j'
 					local j = `j' + 1
 				}
 				
@@ -987,7 +1000,7 @@ if "$quality" == "on" {
 								display "putting '`group_ct'' in record `j'"
 							}
 							
-							replace duplicates_grouped = /// 
+							quietly replace duplicates_grouped = /// 
 								same_date_grouped[`i'] if _n == `j'
 							local position : list posof ///
 								"`psvregistration_k_j'" in psvlist
@@ -1018,7 +1031,7 @@ if "$quality" == "on" {
 											"putting '`group_ct'' in record `m'" 
 									}
 									
-									replace duplicates_grouped = ///
+									quietly replace duplicates_grouped = ///
 										same_date_grouped[`i'] if _n == `m'
 									continue, break
 								}
@@ -1060,15 +1073,16 @@ if "$quality" == "on" {
 		local duplicate_pct = `duplicate_count'/`total_records'
 		
 		// export to excel
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
-			sheet("Quality")
-		
-		putexcel `export_col'9 = `duplicate_count'
-		putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
+		quietly {
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+				sheet("Quality")
+			putexcel `export_col'9 = `duplicate_count'
+			putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
+		}
 		
 		// These only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			putexcel A9 = ///
+			quietly putexcel A9 = ///
 				"This is the amount of records that are likelyduplicates of another", ///
 				italic font("Calibri (Body)", 11, red)
 			export excel key deviceid subscriberid userid *region station /// 
@@ -1085,13 +1099,13 @@ if "$quality" == "on" {
 				psv_number4 recorded4 plateissue4 writein4 psvregistration4 ///
 				vehicletype4 lobtype4 publicuse_yn4 privateuse4 ///
 				image* submissiondate starttime endtime /// 
-				"$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
 				if duplicates_grouped != 0, sheetreplace /// 
 				sheet("_export dups") firstrow(var)
-			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", /// 
+			quietly putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", /// 
 				modify sheet("_export dups")
 			local dup_highlight_length = `dups_incl_originals'+1
-			putexcel (A1:BQ1), bold border(bottom, medium, black)
+			quietly putexcel (A1:BQ1), bold border(bottom, medium, black)
 		
 			// highlight exported duplicates to make viewing easier
 			local i = 1
@@ -1106,12 +1120,12 @@ if "$quality" == "on" {
 				}
 				
 				if (mod(`loops', 2) == 0) {
-					putexcel (A`highlight_start':BQ`highlight_end'), /// 
+					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
 						fpattern(solid, "198 242 255", "198 242 255") ///
 						overwritefmt
 				}
 				else if (mod(`loops', 2) == 1) {
-					putexcel (A`highlight_start':BQ`highlight_end'), /// 
+					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
 						fpattern(solid, "255 222 173", "255 222 173") ///
 						overwritefmt
 				}
@@ -1140,7 +1154,7 @@ if "$quality" == "on" {
 	
 	// sort by region and ignore capitalization for substations
 	sort region subregion station substation
-	replace substation = lower(substation)
+	quietly replace substation = lower(substation)
 	
 	// contract to variables of interest
 	contract region subregion station substation
