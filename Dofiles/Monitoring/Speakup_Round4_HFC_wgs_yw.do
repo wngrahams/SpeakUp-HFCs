@@ -35,10 +35,10 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "on"
+global pairs "off"
 global enum_graph "off"
 global enums "off"
-global quality "off"
+global quality "on"
 global debug "off"
 global fill_in_previous_dates "off" // explanation found in quality section
 
@@ -493,9 +493,9 @@ if ("$enum_graph" == "on") {
 	
 	
 	if "`c(username)'" == "grahamstubbs" {
-		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda"
-		graph export "Team_`team_choice'_`title_d'_`title_m'_`title_y'.png", as(png)
 		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda/Graphs"
+		graph export "Team_`team_choice'_`title_d'_`title_m'_`title_y'.png", as(png)
+		cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs"
 	}
 	drop startdate starttime2
 	
@@ -529,11 +529,28 @@ preserve
 *************************dashboard set up************************
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet ("Enums")
 	putexcel A2 = ("enums") B2 = ("number of entries") /// 
-		C2= ("avg. duration or entries") D2=("avg. start time") ///
+		C2= ("avg. duration of entries") D2=("avg. start time") ///
 		E2=("avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") ///
 		N2=("# injuries") B1=("Metadata") ///
 		F1=("H+R") H1=("Missing Values")
 	putexcel (A3:O3), border(bottom, thin, black)
+	
+	mata
+	
+	B = xl()
+	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
+	B.set_sheet("Enums")
+	
+	B.set_mode("open")
+	
+	B.set_column_width(2, 2, 15)
+	B.set_column_width(3, 3, 19)
+	B.set_column_width(4, 5, 12)
+	
+	B.close_book()
+	
+	end
+	
 
 **********************record values******************************
 	*average duration*
@@ -675,7 +692,7 @@ if "$quality" == "on" {
 	
 		use "$TempFolder/Speakup_Round4_preclean.dta", clear
 		preserve
-		
+				
 		if ("$fill_in_previous_dates" == "on") {
 			// as the outer loop iterates, this (temporaritly) drops all obs 
 			//  submitted for dates after the date the current iteration of the 
@@ -701,7 +718,7 @@ if "$quality" == "on" {
 		*************************** get Total records **************************
 		count
 		local total_records = r(N)
-		
+				
 		// determine export column depding on date of observations currently
 		//  being viewed by this iteration of the for loop
 		local export_col = "A"
@@ -713,20 +730,30 @@ if "$quality" == "on" {
 			quietly {
 				gen date_num = substr("$today", 1, 2)
 				destring date_num, replace
-				local export_col_num = date_num + 53
+				gen month_str = substr("$today", 4, 3)
+				if (month_str == "Jun") {
+					local export_col_num = date_num + 53
+				}
+				else if (month_str == "Jul") {
+					local export_col_num = date_num + 53 + 30
+				}
 				drop date_num
 			}
 		}
-		
+				
 		// Ensure column loops to AA after Z
 		if (`export_col_num') <= 90 {
 			local export_col = char(`export_col_num')
+			disp "`export_col_num'"
+			disp "`export_col'"
 		}
 		else {
 			local export_col = char(`export_col_num' - 26)
 			local export_col = "A" + "`export_col'"
+			disp "`export_col_num'"
+			disp "`export_col'"
 		}
-		
+				
 		// export to excel
 		quietly putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
 			sheet("Quality")
@@ -749,7 +776,7 @@ if "$quality" == "on" {
 			disp "Today: $today"
 			disp "Exporting summaries to column `export_col'"
 		}
-		
+				
 		// Determine what to label column dates
 		local date_str = ""
 		if ("$fill_in_previous_dates" == "on") {
@@ -767,13 +794,11 @@ if "$quality" == "on" {
 		else {
 			local date_str = "$today"
 		}
-		
-		quietly {
+				
 			putexcel `export_col'3 = "`date_str'", bold ///
 				border(bottom, medium, black) font("Calibri (Body)", 11, black) ///
 				overwritefmt
-			putexcel `export_col'4 = `total_records'
-			
+			putexcel `export_col'4 = `total_records'			
 			
 			/* get number and percent of hit&runs */
 			count if hitandrun == 1
@@ -783,8 +808,7 @@ if "$quality" == "on" {
 			// export to excel
 			putexcel `export_col'6 = `hitandrun_amt'
 			putexcel `export_col'7 = (`hitandrun_pct'), nformat(percent_d2)	
-		}
-		
+				
 		// these only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
 			export excel key deviceid subscriberid userid *region station /// 
@@ -801,7 +825,7 @@ if "$quality" == "on" {
 				fpattern(solid, lightpink, lightpink) overwritefmt
 			putexcel (A1:Y1), bold border(bottom, thin, black)
 		}
-		
+				
 		*********** Flag and export all entries with potential issues **********
 		gen potential_issues = 0
 		
@@ -825,7 +849,7 @@ if "$quality" == "on" {
 		count if potential_issues == 1
 		local flags_count = r(N)
 		local flags_pct = `flags_count'/`total_records'
-		
+				
 		// export to excel
 		quietly {
 			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
@@ -847,7 +871,7 @@ if "$quality" == "on" {
 				putexcel (A1:GV1), bold border(bottom, thin, black)
 			}
 		}
-		
+				
 		// drop var that is no longer needed
 		drop potential_issues
 		
@@ -1098,6 +1122,21 @@ if "$quality" == "on" {
 			disp "End of loop `HFC_loop_num'"
 		}
 	}
+	
+	mata
+	
+	B = xl()
+	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
+	B.set_sheet("Enums")
+	
+	B.set_mode("open")
+	
+	B.set_column_width(2, 2, 19)
+	B.set_column_width(3, 20, 10)
+	
+	B.close_book()
+	
+	end
 	
 ****************************    SURVEY PROGRESS    *****************************
 		
