@@ -37,8 +37,8 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 global precleaning "on"
 global pairs "off"
 global enum_graph "off"
-global enums "off"
-global quality "on"
+global enums "on"
+global quality "off"
 global debug "off"
 global fill_in_previous_dates "off" // explanation found in quality section
 
@@ -531,9 +531,9 @@ preserve
 	putexcel A2 = ("enums") B2 = ("number of entries") /// 
 		C2= ("avg. duration of entries") D2=("avg. start time") ///
 		E2=("avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") ///
-		N2=("# injuries") B1=("Metadata") ///
-		F1=("H+R") H1=("Missing Values")
-	putexcel (A3:O3), border(bottom, thin, black)
+		N2=("# injuries") P2=("# Missing info + didn't need casefile") ///
+		B1=("Metadata") F1=("H+R") H1=("Missing Values")
+	putexcel (A3:Q3), border(bottom, thin, black)
 	
 	mata
 	
@@ -573,28 +573,36 @@ preserve
 	
 	*missing values*
 	*TAR*
-	bysort userid: egen totalTARmissing=total(tar_number==9999)
-	gen percentTARmissing=totalTARmissing/totalentries
+	bysort userid : egen totalTARmissing=total(tar_number == 9999)
+	gen percentTARmissing = totalTARmissing/totalentries
 	format percentTARmissing %9.2fc
 	*time*
 	destring time, replace
-	bysort userid: egen totaltimemissing=total(time==9999)
-	gen percenttimemissing=totaltimemissing/totalentries
+	bysort userid : egen totaltimemissing=total(time == 9999)
+	gen percenttimemissing = totaltimemissing/totalentries
 	format percenttimemissing %9.2fc
 	*death*
-	bysort userid: egen totaldeathmissing=total(deathcount==9999)
-	gen percentdeathmissing=totaldeathmissing/totalentries 
+	bysort userid : egen totaldeathmissing=total(deathcount == 9999)
+	gen percentdeathmissing = totaldeathmissing/totalentries 
 	format percentdeathmissing %9.2fc
 	*injury*
-	bysort userid: egen totalinjurymissing=total(injurycount==9999)
-	gen percentinjurymissing=totalinjurymissing/totalentries
+	bysort userid : egen totalinjurymissing=total(injurycount == 9999)
+	gen percentinjurymissing = totalinjurymissing/totalentries
 	format percentinjurymissing %9.2fc
+	*Missing + no casefile*
+	bysort userid : egen totalmissing_nocasefile = ///
+		total(casefile == 2 & ///
+		(injurycount == 9999 | deathcount == 9999 | time == 9999 | ///
+		tar_number == 9999 | causeofaccident == 9999))
+	gen pctmissing_nocasefile = totalmissing_nocasefile/totalentries
+	format pctmissing_nocasefile %9.2fc
 	
 	/*export to excel*/
 	collapse totalentries avg_duration avg_starttime avg_endtime ///
 		totalhitandrun percenthitandrun totalTARmissing percentTARmissing ///
 		totaltimemissing percenttimemissing totaldeathmissing ///
-		percentdeathmissing totalinjurymissing percentinjurymissing, by(userid)
+		percentdeathmissing totalinjurymissing percentinjurymissing ///
+		totalmissing_nocasefile pctmissing_nocasefile, by(userid)
 	export excel using "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
 		cell(A4) sheet ("Enums", modify)
 	levelsof userid
@@ -602,13 +610,14 @@ preserve
 	putexcel (A1:A`linedist'), border(right, thin, black)
 	putexcel (E1:E`linedist'), border(right, thin, black)
 	putexcel (G1:G`linedist'), border(right, thin, black)
-	putexcel (O1:O`linedist'), border(right, thin, black)
+	putexcel (Q1:Q`linedist'), border(right, thin, black)
 	
 	putexcel (G4:G60), nformat(percent_d2)
 	putexcel (I4:I60), nformat(percent_d2)
 	putexcel (K4:K60), nformat(percent_d2)
 	putexcel (M4:M60), nformat(percent_d2)
 	putexcel (O4:O60), nformat(percent_d2)
+	putexcel (Q4:Q60), nformat(percent_d2)
 	
 	putexcel F3 = "#"
 	putexcel G3 = "%"
@@ -620,7 +629,9 @@ preserve
 	putexcel M3 = "%"
 	putexcel N3 = "#"
 	putexcel O3 = "%"
-	putexcel (A1:O3), bold
+	putexcel P3 = "#"
+	putexcel Q3 = "%"
+	putexcel (A1:Q3), bold
 	
 restore
 }
