@@ -62,8 +62,8 @@ if "$precleaning" == "on" {
 	// Drop if survey was started before the beginning of Round 4
 	drop if starttime < mdyhms(6, 14, 2018, 00, 00, 00)
 	
-	// Team change 
-	replace userid = "C8" if userid=="K3" & starttime >= ///
+	// Enum K3 changed to C8 on June 19th
+	replace userid = "C8" if userid == "K3" & starttime >= ///
 		mdyhms(6, 19, 2018, 00, 00, 00)
 	
 	*Save
@@ -825,12 +825,13 @@ if "$quality" == "on" {
 		// Ensure column loops to AA after Z
 		if (`export_col_num') <= 90 {
 			local export_col = char(`export_col_num')
-			disp "`export_col_num'"
-			disp "`export_col'"
 		}
 		else {
 			local export_col = char(`export_col_num' - 26)
 			local export_col = "A" + "`export_col'"
+		}
+		
+		if ("$debug" == "on") {
 			disp "`export_col_num'"
 			disp "`export_col'"
 		}
@@ -880,7 +881,7 @@ if "$quality" == "on" {
 		putexcel `export_col'4 = `total_records'			
 		
 		****************** get number and percent of hit&runs ******************
-		count if hitandrun == 1
+		quietly count if hitandrun == 1
 		local hitandrun_amt = r(N)
 		local hitandrun_pct = `hitandrun_amt'/`total_records'
 		
@@ -925,7 +926,7 @@ if "$quality" == "on" {
 		drop additionalinfo_lower
 		
 		// get counts
-		count if potential_issues == 1
+		quietly count if potential_issues == 1
 		local flags_count = r(N)
 		local flags_pct = `flags_count'/`total_records'
 				
@@ -953,9 +954,9 @@ if "$quality" == "on" {
 		drop potential_issues
 		
 		********** get number and percent of serious/fatal TSD entries *********
-		count if tar_yn == 0 & primary_source == 2
+		quietly count if tar_yn == 0 & primary_source == 2
 		local tsd_entries_amt = r(N)
-		count if tar_yn == 0 & primary_source == 2 & natureofaccident < 3
+		quietly count if tar_yn == 0 & primary_source == 2 & natureofaccident < 3
 		local tsd_seriousfatal_amt = r(N)
 		local tsd_seriousfatal_pct = ///
 			`tsd_seriousfatal_amt'/`tsd_entries_amt'
@@ -1138,7 +1139,7 @@ if "$quality" == "on" {
 		gsort - duplicates_grouped psvregistration1 starttime
 		
 		// get number and percent of duplicates
-		count
+		quietly count
 		local dups_incl_originals = r(N)
 		local duplicate_count = 0
 		local i = 1
@@ -1183,6 +1184,7 @@ if "$quality" == "on" {
 			putexcel (A1:BQ1), bold border(bottom, medium, black)
 		
 			// highlight exported duplicates to make viewing easier
+			disp "Highlighting duplicates..."
 			local i = 1
 			local highlight_start = 2
 			local loops = 0
@@ -1195,12 +1197,20 @@ if "$quality" == "on" {
 				}
 				
 				if (mod(`loops', 2) == 0) {
-					putexcel (A`highlight_start':BQ`highlight_end'), /// 
-						fpattern(solid, "198 242 255", "198 242 255") ///
-						overwritefmt
+					// this is to reduce unneccesary output
+					if (mod(`loops', 3) == 0) {
+						putexcel (A`highlight_start':BQ`highlight_end'), /// 
+							fpattern(solid, "198 242 255", "198 242 255") ///
+							overwritefmt
+					}
+					else {
+						quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
+							fpattern(solid, "198 242 255", "198 242 255") ///
+							overwritefmt
+					}
 				}
 				else if (mod(`loops', 2) == 1) {
-					putexcel (A`highlight_start':BQ`highlight_end'), /// 
+					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
 						fpattern(solid, "255 222 173", "255 222 173") ///
 						overwritefmt
 				}
@@ -1209,6 +1219,7 @@ if "$quality" == "on" {
 				local highlight_start = `highlight_end' + 1
 				local loops = `loops' + 1
 			}
+			disp "Done highlighting duplicates."
 		}
 		
 		restore
@@ -1218,6 +1229,7 @@ if "$quality" == "on" {
 		}
 	}
 	
+	// mata for formatting
 	mata
 	
 	B = xl()
@@ -1232,6 +1244,7 @@ if "$quality" == "on" {
 	B.close_book()
 	
 	end
+	// end mata
 	
 ****************************    SURVEY PROGRESS    *****************************
 		
