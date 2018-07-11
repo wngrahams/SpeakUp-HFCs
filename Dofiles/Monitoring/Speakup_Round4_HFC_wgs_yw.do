@@ -6,6 +6,8 @@ Date: 12/06/2018
 Updated: 11/07/2018
 *******************************************************************************/
 
+quietly {
+
 	/*__________________
 	|					|
 	|	Preliminaries	|
@@ -45,6 +47,9 @@ global fill_in_previous_dates "on" // explanation found in quality section
 *Date
 global today = c(current_date)
 
+
+
+quietly {
 /*******************************************************************************
 ********************************************************************************
 	PRE-CLEANING
@@ -54,8 +59,12 @@ global today = c(current_date)
 				$TempFolder/Speakup_Round4_preclean.dta
 ********************************************************************************
 *******************************************************************************/
+}
 
+quietly {
 if "$precleaning" == "on" {
+
+	noisily display _continue "Precleaning data... "
 
 	use "$RawFolder/Speak Up Round 4 Survey.dta", clear
 	
@@ -63,15 +72,16 @@ if "$precleaning" == "on" {
 	drop if starttime < mdyhms(6, 14, 2018, 00, 00, 00)
 	
 	// Enum K3 changed to C8 on June 19th
-	replace userid = "C8" if userid == "K3" & starttime >= ///
+	quietly replace userid = "C8" if userid == "K3" & starttime >= ///
 		mdyhms(6, 19, 2018, 00, 00, 00)
 	
 	*Save
 	save "$TempFolder/Speakup_Round4_preclean.dta", replace
-
-}
 	
-
+	noisily display "Precleaning done."
+}
+}	
+quietly{
 /*******************************************************************************
 ********************************************************************************
 	ENUM PAIRS DASHBOARD
@@ -85,9 +95,13 @@ if "$precleaning" == "on" {
 			- start and end time for each day, by pair of enum (graph)
 		
 *******************************************************************************
-*******************************************************************************/	
+*******************************************************************************/
+}	
+quietly {
 if "$pairs" == "on" {	
 
+	noisily display "Creating pairs dashboard... "
+	
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
 	preserve 
@@ -148,10 +162,11 @@ if "$pairs" == "on" {
 	}
 	
 	// Export to excel
-	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", replace ///
+	noisily display _col(5) _continue "Exporting pairs dashboard to excel... "
+	quietly putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", replace ///
 			sheet("Pairs")
 			
-	putexcel A1 = "Enumerators", bold overwritefmt
+	quietly putexcel A1 = "Enumerators", bold overwritefmt
 	// Ensure column loops to AA after Z
 	local export_col_num = 65 + `number_of_days'
 	local export_col = "A"
@@ -174,7 +189,7 @@ if "$pairs" == "on" {
 			local team_size = r(N)
 			
 			if ("$debug" == "on") {
-				display "Team size: `team_size'"
+				noisily display "Team size: `team_size'"
 			}
 			local team_sizes `team_sizes' "`team_size'"
 		}
@@ -187,7 +202,7 @@ if "$pairs" == "on" {
 		local team_to_check `: word `i' of `teams''
 		
 		if (`i' == 2) {
-			export excel userid entry_amt* ///
+			quietly export excel userid entry_amt* ///
 				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
 				if supervisor != 1 & first_letter == `"`team_to_check'"', ///
 				sheetmodify sheet("Pairs") firstrow(varl) cell(A`enum_cell')
@@ -196,7 +211,7 @@ if "$pairs" == "on" {
 			
 		}
 		else {
-			export excel userid entry_amt* ///
+			quietly export excel userid entry_amt* ///
 				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
 				if supervisor != 1 & first_letter == `"`team_to_check'"', ///
 				sheetmodify sheet("Pairs") cell(A`enum_cell')
@@ -212,7 +227,7 @@ if "$pairs" == "on" {
 		local total_cell = 0
 		if (`i' != 4) {
 			local total_cell = `enum_cell' - 1
-			putexcel A`total_cell' = "TOTAL", bold
+			quietly putexcel A`total_cell' = "TOTAL", bold
 		}
 	}
 	
@@ -222,7 +237,7 @@ if "$pairs" == "on" {
 		local hl_end = `hl_start' + `hl_dist'
 		
 		if (`i' != 5) {
-			putexcel (A`hl_start':`export_col'`hl_start'), ///
+			quietly putexcel (A`hl_start':`export_col'`hl_start'), ///
 				border(bottom, thin, black) 
 				
 		}
@@ -234,14 +249,17 @@ if "$pairs" == "on" {
 			
 	}
 	
-	putexcel (A`hl_start':`export_col'`hl_start'), ///
+	quietly putexcel (A`hl_start':`export_col'`hl_start'), ///
 			border(bottom, thin, black) 
 			
 			
 	encode first_letter, generate(first_char)
 	replace first_char = 4 if first_char == 5
+	
+	noisily display "Done."
 			
 	// Mata section:
+	noisily display _col(5) _continue "Formatting dashboard... "
 	mata
 	
 	st_view(Z=., ., ("entry_amt*", "first_char"))
@@ -306,6 +324,7 @@ if "$pairs" == "on" {
 	
 	end
 	// End mata section
+	noisily display "Done."
 	
 	putexcel (A2:`export_col'2), bold border(bottom, medium, black) overwritefmt
 	
@@ -345,9 +364,12 @@ if "$pairs" == "on" {
 	putexcel (A`intern_cell':A`intern_end'), border(right, medium, black)
 		
 	restore
+	noisily display "Pairs dashboard done."
 	
 }
-	
+}
+
+quietly {	
 ***********************graph******************************
 
 if ("$enum_graph" == "on") {
@@ -368,18 +390,21 @@ if ("$enum_graph" == "on") {
 // 	local team_choice = "I"
 
 	if ("$debug" == "on") {
-		disp "The chosen team is: `team_choice'"
+		noisily disp "The chosen team is: `team_choice'"
 	}
 	
 	// SELECT DATE OF GRAPH HERE
 	gen startdate=dofc(starttime)
-	keep if startdate==mdy(06,25,2018) // THIS IS THE VALUE TO CHANGE
+	keep if startdate==mdy(06,15,2018) // THIS IS THE VALUE TO CHANGE
 	
 	gen date_HRF = dofc(starttime)
 	format date_HRF %td
 	local title_d = day(date_HRF)
 	local title_m = month(date_HRF)
 	local title_y = year(date_HRF)
+	
+	noisily display _continue /// 
+		"Creating graph for Team `team_choice' on `title_d'/`title_m'/`title_y'... "
 	
 	sort userid
 	
@@ -500,9 +525,13 @@ if ("$enum_graph" == "on") {
 	drop startdate starttime2
 	
 	restore
+
+	noisily display "Done."
+	
+}
 }	
 	
-	
+quietly {
 /*******************************************************************************
 ********************************************************************************
 	ENUMERATORS DASHBOARD
@@ -519,14 +548,21 @@ if ("$enum_graph" == "on") {
 			# and % of H+R
 		
 *******************************************************************************
-*******************************************************************************/	
+*******************************************************************************/
+}	
 
-if "$enums" == "on" {	
+quietly {	
+if "$enums" == "on" {
 
-use "$TempFolder/Speakup_Round4_preclean.dta", clear
-preserve
+	noisily display "Creating enums dashboard... "
+
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
+	preserve
 
 *************************dashboard set up************************
+
+	noisily display _col(5) _continue "Setting excel columns... "
+	
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet ("Enums")
 	putexcel A2 = ("Enums") B2 = ("Number of entries") /// 
 		C2= ("Avg. duration of entries") D2=("Avg. start time") ///
@@ -535,7 +571,8 @@ preserve
 		B1=("Metadata") F1=("H+R") H1=("Missing Values")
 	putexcel (A3:Q3), border(bottom, thin, black)
 	
-
+	noisily display "Done."
+	
 **********************record values******************************
 	*average duration*
 	destring duration, replace
@@ -582,6 +619,7 @@ preserve
 	format pctmissing_nocasefile %9.2fc
 	
 	/*export to excel*/
+	noisily display _col(5) _continue "Exporting dashboard to excel... "
 	collapse totalentries avg_duration avg_starttime avg_endtime ///
 		totalhitandrun percenthitandrun totalTARmissing percentTARmissing ///
 		totaltimemissing percenttimemissing totaldeathmissing ///
@@ -603,10 +641,11 @@ preserve
 		Q3 = ("%")
 	putexcel (A1:Q3), bold
 	
-	
+	noisily display "Done."
 	
 	
 	// mata section for specific excel formatting
+	noisily display _col(5) _continue "Formatting dashboard... "
 	mata
 	
 	st_view(Z=., ., .)
@@ -701,12 +740,15 @@ preserve
 	B.close_book()
 	
 	end
+	noisily display "Done. "
 	// end mata section
 	
-restore
+	restore
+	noisily display "Enums dashboard done."
+}
 }
 
-
+quietly {
 /*******************************************************************************
 ********************************************************************************
 	QUALITY DASHBOARD
@@ -728,8 +770,11 @@ restore
 						
 *******************************************************************************
 *******************************************************************************/	
-
+}
+quietly {
 if "$quality" == "on" {	
+
+	noisily display "Creating enums dashboard... "
 
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
@@ -764,8 +809,8 @@ if "$quality" == "on" {
 			local loop_end = date_num + 17
 		}
 		if ("$debug" == "on") {
-			disp "Previous dates will be filled in"
-			disp "Number of loops to be performed: `loop_end'"
+			noisily disp "Previous dates will be filled in"
+			noisily disp "Number of loops to be performed: `loop_end'"
 		}
 	}
 	
@@ -832,8 +877,8 @@ if "$quality" == "on" {
 		}
 		
 		if ("$debug" == "on") {
-			disp "`export_col_num'"
-			disp "`export_col'"
+			noisily disp "`export_col_num'"
+			noisily disp "`export_col'"
 		}
 				
 		// export to excel
@@ -853,8 +898,8 @@ if "$quality" == "on" {
 				putexcel (B4:B16), border(right, medium, black)
 		}
 		if ("$debug" == "on") {
-			disp "Today: $today"
-			disp "Exporting summaries to column `export_col'"
+			noisily disp "Today: $today"
+			noisily disp "Exporting summaries to column `export_col'"
 		}
 				
 		// Determine what to label column dates
@@ -874,6 +919,8 @@ if "$quality" == "on" {
 		else {
 			local date_str = "$today"
 		}
+		
+		noisily display _col(5) "Generating quality summary for `date_str'... "
 				
 		putexcel `export_col'3 = "`date_str'", bold ///
 			border(bottom, medium, black) font("Calibri (Body)", 11, black) ///
@@ -881,6 +928,8 @@ if "$quality" == "on" {
 		putexcel `export_col'4 = `total_records'			
 		
 		****************** get number and percent of hit&runs ******************
+		noisily display _col(10) _continue "Counting hit and runs... "
+		
 		quietly count if hitandrun == 1
 		local hitandrun_amt = r(N)
 		local hitandrun_pct = `hitandrun_amt'/`total_records'
@@ -905,8 +954,11 @@ if "$quality" == "on" {
 				fpattern(solid, lightpink, lightpink) overwritefmt
 			putexcel (A1:Y1), bold border(bottom, thin, black)
 		}
-				
+			
+		noisily display "Done."
 		*********** Flag and export all entries with potential issues **********
+		noisily display _col(10) _continue "Counting flagged entries... "
+		
 		gen potential_issues = 0
 		
 		// generate a new variable that is equivalent to additionalinfo but 
@@ -947,13 +999,16 @@ if "$quality" == "on" {
 			local flags_highlight_length = `flags_count' + 1
 			putexcel (AM1:AM`flags_highlight_length'), ///
 				fpattern(solid, lightpink, lightpink) overwritefmt
-			putexcel (A1:GV1), bold border(bottom, thin, black)
+			putexcel (A1:HL1), bold border(bottom, thin, black)
 		}
 				
 		// drop var that is no longer needed
 		drop potential_issues
 		
+		noisily display "Done."
 		********** get number and percent of serious/fatal TSD entries *********
+		noisily display _col(10) _continue "Counting serious/fatal TSD entries... "
+		
 		quietly count if tar_yn == 0 & primary_source == 2
 		local tsd_entries_amt = r(N)
 		quietly count if tar_yn == 0 & primary_source == 2 & natureofaccident < 3
@@ -974,7 +1029,10 @@ if "$quality" == "on" {
 				italic font("Calibri (Body)", 11, red)
 		}
 		
+		noisily display "Done."
 		********************* search and record duplicates *********************
+		noisily display _col(10) _continue "Counting duplicate records... "
+		
 		// find and group records with the same date
 		duplicates tag date, gen(same_date)  
 		sort date
@@ -1036,7 +1094,7 @@ if "$quality" == "on" {
 				
 					local psvregistration_k_j = psvregistration`k'[`j']
 					if ("$debug" == "on") {
-							display ///
+							noisily display ///
 								"psvregistration`k'[`j']: `psvregistration_k_j'" 
 					}
 					
@@ -1049,9 +1107,10 @@ if "$quality" == "on" {
 							local psvlist_size = `psvlist_size' + 1
 							
 							if ("$debug" == "on") {
-								display "size of the list is 0, add `psvregistration_k_j' to list"
-								display "list is now `psvlist'"
-								display "size is now `psvlist_size'"
+								noisily display ///
+									"size of the list is 0, add `psvregistration_k_j' to list"
+								noisily display "list is now `psvlist'"
+								noisily display "size is now `psvlist_size'"
 							}
 						}
 						
@@ -1062,9 +1121,10 @@ if "$quality" == "on" {
 							local psvlist_size = `psvlist_size' + 1
 							
 							if ("$debug" == "on") {
-								display "`psvregistration_k_j' is not on the list; add it"
-								display "list is now `psvlist'"
-								display "size is now `psvlist_size'"
+								noisily display ///
+									"`psvregistration_k_j' is not on the list; add it"
+								noisily display "list is now `psvlist'"
+								noisily display "size is now `psvlist_size'"
 							}
 						}
 						
@@ -1074,8 +1134,8 @@ if "$quality" == "on" {
 							local group_ct = same_date_grouped[`i']
 							
 							if ("$debug" == "on") {
-								display "`psvregistration_k_j' is already on the list!!"
-								display "putting '`group_ct'' in record `j'"
+								noisily display "`psvregistration_k_j' is already on the list!!"
+								noisily display "putting '`group_ct'' in record `j'"
 							}
 							
 							quietly replace duplicates_grouped = /// 
@@ -1085,7 +1145,7 @@ if "$quality" == "on" {
 							local psv_counter = 0
 							
 							if "$debug" == "on" {
-								display "position: `position'"
+								noisily display "position: `position'"
 							}
 							
 							// search the list for the matching psv registration 
@@ -1097,15 +1157,15 @@ if "$quality" == "on" {
 									psvcount[`m']
 								
 								if ("$debug" == "on") {
-									display "psv_counter: `psv_counter'"
-									display "m: `m'"
+									noisily display "psv_counter: `psv_counter'"
+									noisily display "m: `m'"
 								}
 								
 								if (`psv_counter' >= `position') {
 									local group_ct = same_date_grouped[`i']
 									
 									if ("$debug" == "on") {
-										display ///
+										noisily display ///
 											"putting '`group_ct'' in record `m'" 
 									}
 									
@@ -1156,8 +1216,14 @@ if "$quality" == "on" {
 		putexcel `export_col'9 = `duplicate_count'
 		putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
 		
+		noisily display "Done."
+		
+		noisily display _col(5) "Summary for `date_str' done."
+		
 		// These only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
+			noisily display _col(5) _continue "Highlighting duplicate records... "
+		
 			putexcel A9 = ///
 				"This is the amount of records that are likelyduplicates of another", ///
 				italic font("Calibri (Body)", 11, red)
@@ -1193,21 +1259,15 @@ if "$quality" == "on" {
 				local highlight_end = `highlight_start' + `highlight_length'
 				
 				if ("$debug" == "on") {
-					display "Higlighting from A`highlight_start' to GY`highlight_end'"
+					noisily display ///
+						"Higlighting from A`highlight_start' to GY`highlight_end'"
 				}
 				
 				if (mod(`loops', 2) == 0) {
-					// this is to reduce unneccesary output
-					if (mod(`loops', 3) == 0) {
-						putexcel (A`highlight_start':BQ`highlight_end'), /// 
+					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
 							fpattern(solid, "198 242 255", "198 242 255") ///
 							overwritefmt
-					}
-					else {
-						quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
-							fpattern(solid, "198 242 255", "198 242 255") ///
-							overwritefmt
-					}
+					noisily display _continue "... "
 				}
 				else if (mod(`loops', 2) == 1) {
 					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
@@ -1219,13 +1279,13 @@ if "$quality" == "on" {
 				local highlight_start = `highlight_end' + 1
 				local loops = `loops' + 1
 			}
-			disp "Done highlighting duplicates."
+			noisily disp "Done."
 		}
 		
 		restore
 		
 		if ("$debug" == "on") {
-			disp "End of loop `HFC_loop_num'"
+			noisily disp "End of loop `HFC_loop_num'"
 		}
 	}
 	
@@ -1247,6 +1307,8 @@ if "$quality" == "on" {
 	// end mata
 	
 ****************************    SURVEY PROGRESS    *****************************
+
+	noisily disp _continue "Creating enums dashboard... "
 		
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	preserve
@@ -1292,4 +1354,8 @@ if "$quality" == "on" {
 	restore
 	
 	putexcel close
+
+	noisily display "Done."
+}
+}
 }
