@@ -3,8 +3,10 @@
 Author: Béatrice Leydier, William Stubbs, Yuou Wu
 Email: bl517@georgetown.edu
 Date: 12/06/2018
-Updated: 21/06/2018
+Updated: 11/07/2018
 *******************************************************************************/
+
+quietly {
 
 	/*__________________
 	|					|
@@ -35,16 +37,19 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "off"
+global pairs "on"
 global enum_graph "off"
 global enums "on"
 global quality "on"
 global debug "off"
-global fill_in_previous_dates "off" // explanation found in quality section
+global fill_in_previous_dates "on" // explanation found in quality section
 
 *Date
 global today = c(current_date)
 
+
+
+quietly {
 /*******************************************************************************
 ********************************************************************************
 	PRE-CLEANING
@@ -54,24 +59,29 @@ global today = c(current_date)
 				$TempFolder/Speakup_Round4_preclean.dta
 ********************************************************************************
 *******************************************************************************/
+}
 
+quietly {
 if "$precleaning" == "on" {
+
+	noisily display _continue "Precleaning data... "
 
 	use "$RawFolder/Speak Up Round 4 Survey.dta", clear
 	
 	// Drop if survey was started before the beginning of Round 4
 	drop if starttime < mdyhms(6, 14, 2018, 00, 00, 00)
 	
-	// Team change 
-	replace userid = "C8" if userid=="K3" & starttime >= ///
+	// Enum K3 changed to C8 on June 19th
+	quietly replace userid = "C8" if userid == "K3" & starttime >= ///
 		mdyhms(6, 19, 2018, 00, 00, 00)
 	
 	*Save
 	save "$TempFolder/Speakup_Round4_preclean.dta", replace
-
-}
 	
-
+	noisily display "Precleaning done."
+}
+}	
+quietly{
 /*******************************************************************************
 ********************************************************************************
 	ENUM PAIRS DASHBOARD
@@ -85,9 +95,13 @@ if "$precleaning" == "on" {
 			- start and end time for each day, by pair of enum (graph)
 		
 *******************************************************************************
-*******************************************************************************/	
+*******************************************************************************/
+}	
+quietly {
 if "$pairs" == "on" {	
 
+	noisily display "Creating pairs dashboard... "
+	
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
 	preserve 
@@ -100,7 +114,6 @@ if "$pairs" == "on" {
 	tostring start_date_day, replace
 	tostring start_date_month, replace
 	gen date_str = start_date_day + "_" + start_date_month + "_2018"
-	
 	
 	// sort bu userid and entrydate
 	sort userid entrydate
@@ -115,7 +128,9 @@ if "$pairs" == "on" {
 	reshape wide entry_amt, i(userid) j(date_str) string
 	
 	// generate variables for empty sundays
+	// TODO automate this pls
 	gen entry_amt17_6_2018 = 0
+	gen entry_amt24_6_2018 = 0
 	order _all, alpha
 	order userid, first
 	
@@ -147,31 +162,11 @@ if "$pairs" == "on" {
 	}
 	
 	// Export to excel
-	export excel userid entry_amt* ///
-		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor != 1 & intern != 1, ///
-		sheetreplace sheet("Pairs") firstrow(varl) cell(A2)
-		
-	count if supervisor != 1 & intern != 1
-	local enum_ct = r(N)
-	local sup_cell = `enum_ct' + 5
-	export excel userid entry_amt* ///
-		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor == 1 & intern != 1, ///
-		sheetmodify sheet("Pairs") firstrow(varl) cell(A`sup_cell')
-		
-	count if supervisor == 1
-	local sup_ct = r(N)
-	local intern_cell = `sup_cell' + `sup_ct' + 3
-	export excel userid entry_amt* ///
-		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-		if supervisor != 1 & intern == 1, ///
-		sheetmodify sheet("Pairs") firstrow(varl) cell(A`intern_cell')
-		
-	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+	noisily display _col(5) _continue "Exporting pairs dashboard to excel... "
+	quietly putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", replace ///
 			sheet("Pairs")
 			
-	putexcel A1 = "Enumerators", bold overwritefmt
+	quietly putexcel A1 = "Enumerators", bold overwritefmt
 	// Ensure column loops to AA after Z
 	local export_col_num = 65 + `number_of_days'
 	local export_col = "A"
@@ -182,29 +177,8 @@ if "$pairs" == "on" {
 		local export_col = char(`export_col_num' - 26)
 		local export_col = "A" + "`export_col'"
 	}
-	putexcel (A2:`export_col'2), bold border(bottom, medium, black)
-	local enum_end = `enum_ct' + 2
-	putexcel (A3:A`enum_end'), border(right, medium, black)
 	
-	local sup_title = `sup_cell' - 1
-	putexcel A`sup_title' = "Supervisors", bold overwritefmt
-	putexcel (A`sup_cell':`export_col'`sup_cell'), ///
-		bold border(bottom, medium, black)
-	local sup_start = `sup_cell' + 1
-	local sup_end = `sup_ct' + `sup_cell'
-	putexcel (A`sup_start':A`sup_end'), border(right, medium, black)
-		
-	local intern_title = `intern_cell' - 1
-	putexcel A`intern_title' = "Interns", bold overwritefmt
-	putexcel (A`intern_cell':`export_col'`intern_cell'), ///
-		bold border(bottom, medium, black)
-	local intern_start = `intern_cell' + 1
-	count if intern == 1
-	local intern_ct = r(N)
-	local intern_end = `intern_ct' + `intern_cell'
-	putexcel (A`intern_start':A`intern_end'), border(right, medium, black)
-	
-	local teams "I" "C" "E" "K" "N" "U" "W"
+	local teams "I" "C" "E" "K" "L" "N" "U" "W"
 	local team_sizes = ""
 	local team_ct : list sizeof teams
 	forvalues i = 1/`team_ct' {
@@ -213,22 +187,189 @@ if "$pairs" == "on" {
 			count if substr(userid, 1, 1) == `"`team_to_check'"' /// 
 				& substr(userid, 2, 1) != "1"
 			local team_size = r(N)
+			
+			if ("$debug" == "on") {
+				noisily display "Team size: `team_size'"
+			}
 			local team_sizes `team_sizes' "`team_size'"
+		}
+	}
+	
+	local enum_cell = 2
+	gen first_letter = substr(userid, 1, 1)
+	forvalues i = 2/`team_ct' {
+		local enum_dist `: word `i' of `team_sizes''
+		local team_to_check `: word `i' of `teams''
+		
+		if (`i' == 2) {
+			quietly export excel userid entry_amt* ///
+				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				if supervisor != 1 & first_letter == `"`team_to_check'"', ///
+				sheetmodify sheet("Pairs") firstrow(varl) cell(A`enum_cell')
+				
+			local enum_cell = `enum_cell' + `enum_dist' + 2
+			
+		}
+		else {
+			quietly export excel userid entry_amt* ///
+				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				if supervisor != 1 & first_letter == `"`team_to_check'"', ///
+				sheetmodify sheet("Pairs") cell(A`enum_cell')
+				
+			if (`i' == 4) {
+				local enum_cell = `enum_cell' + `enum_dist'
+			}
+			else {
+				local enum_cell = `enum_cell' + `enum_dist' + 1
+			}
+		}
+		
+		local total_cell = 0
+		if (`i' != 4) {
+			local total_cell = `enum_cell' - 1
+			quietly putexcel A`total_cell' = "TOTAL", bold
 		}
 	}
 	
 	local hl_start = 2
 	forvalues i = 2/`team_ct' {
-		local hl_dist `: word `i' of `team_sizes''
-		local hl_start = `hl_start' + `hl_dist'
-		putexcel (A`hl_start':`export_col'`hl_start'), ///
-			border(bottom, thin, black) 
+		local hl_dist `: word `i' of `team_sizes'' + 1
+		local hl_end = `hl_start' + `hl_dist'
+		
+		if (`i' != 5) {
+			quietly putexcel (A`hl_start':`export_col'`hl_start'), ///
+				border(bottom, thin, black) 
+				
+		}
+		else {
+			local hl_end = `hl_end' - 1
+		}
+		
+		local hl_start = `hl_end'
+			
 	}
+	
+	quietly putexcel (A`hl_start':`export_col'`hl_start'), ///
+			border(bottom, thin, black) 
+			
+			
+	encode first_letter, generate(first_char)
+	replace first_char = 4 if first_char == 5
+	
+	noisily display "Done."
+			
+	// Mata section:
+	noisily display _col(5) _continue "Formatting dashboard... "
+	mata
+	
+	st_view(Z=., ., ("entry_amt*", "first_char"))
+	
+	B = xl()
+	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
+	B.set_sheet("Pairs")
+	
+	B.set_mode("open")
+	
+	sum_start = 3
+	sum_end = 3
+	for (j=1; j<=rows(Z); j++) {
+		
+		team_group = Z[j, cols(Z)]
+		test_group = j
+		
+		if (team_group != 3) {
+		
+			while (Z[test_group, cols(Z)] == team_group & test_group < rows(Z)) {
+				test_group++
+			}
+			
+			if (j==1) {
+				sum_end = test_group + sum_start - sum_end
+			}
+			else if (team_group >= 4 & team_group != Z[test_group, cols(Z)]) {
+				sum_end = test_group + sum_start - sum_end - 3
+			}
+			else {
+				sum_end = test_group + sum_start - sum_end - 1
+			}
+		
+			for(i=2; i<=(cols(Z)); i++) {
+				col_val = char(65 + i - 1)
+				formula = "SUM(" + col_val + strofreal(sum_start) + ":" + col_val + strofreal(sum_end) + ")"
+				B.put_formula(sum_end+1, i, formula)
+				B.set_font_bold(sum_end+1, i, "on")
+			}
+			
+			col_val = char(65 + cols(Z)-1)
+			total_formula = "SUM(B" + strofreal(sum_end+1) + ":" + col_val + strofreal(sum_end+1) + ")"
+			B.put_formula(sum_end+1, cols(Z)+1, total_formula)
+			B.set_font_bold(sum_end+1, cols(Z)+1, "on")
+			
+			sum_start = sum_end + 2
+			j = test_group
+		
+		}
+		else {
+			j = j+2
+		}
+	}
+	
+	B.set_column_width(2, cols(Z), 10)
+	
+	fmt_rows = (3, rows(Z) + 2)
+	fmt_cols = (2, cols(Z))
+	B.set_number_format(fmt_rows, fmt_cols, "[Red][=0];[Black][>0]")
+	
+	B.close_book()
+	
+	end
+	// End mata section
+	noisily display "Done."
+	
+	putexcel (A2:`export_col'2), bold border(bottom, medium, black) overwritefmt
+	
+	count if supervisor != 1 & intern != 1
+	local enum_ct = r(N)
+	local enum_end = `enum_ct' + 8
+	putexcel (A2:A`enum_end'), border(right, medium, black)
+	
+	local sup_cell = `enum_end' + 3
+	local sup_title = `sup_cell' - 1
+	putexcel A`sup_title' = "Supervisors", bold
+	export excel userid entry_amt* ///
+		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+		if supervisor == 1 & intern != 1, ///
+		sheetmodify sheet("Pairs") firstrow(varl) cell(A`sup_cell')
+	putexcel (A`sup_cell':`export_col'`sup_cell'), ///
+		bold border(bottom, medium, black)
+		
+	count if supervisor == 1 & intern != 1
+	local sup_ct = r(N)
+	local sup_end = `sup_cell' + `sup_ct'
+	putexcel (A`sup_cell':A`sup_end'), border(right, medium, black)
+	
+	local intern_cell = `sup_end' + 3
+	local intern_title = `intern_cell' - 1
+	putexcel A`intern_title' = "Interns", bold
+	export excel userid entry_amt* ///
+		using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+		if supervisor != 1 & intern == 1, ///
+		sheetmodify sheet("Pairs") firstrow(varl) cell(A`intern_cell')
+	putexcel (A`intern_cell':`export_col'`intern_cell'), ///
+		bold border(bottom, medium, black)
+	
+	count if supervisor != 1 & intern == 1
+	local intern_ct = r(N)
+	local intern_end = `intern_cell' + `intern_ct'
+	putexcel (A`intern_cell':A`intern_end'), border(right, medium, black)
 		
 	restore
+	noisily display "Pairs dashboard done."
 	
 }
-	
+}
+
+quietly {	
 ***********************graph******************************
 
 if ("$enum_graph" == "on") {
@@ -244,17 +385,17 @@ if ("$enum_graph" == "on") {
 // 	local team_choice = "W"
 // 	local team_choice = "N"
 // 	local team_choice = "C"
-// 	local team_choice = "K"
+	local team_choice = "K"
 // 	local team_choice = "U"
-	local team_choice = "I"
+// 	local team_choice = "I"
 
 	if ("$debug" == "on") {
-		disp "The chosen team is: `team_choice'"
+		noisily disp "The chosen team is: `team_choice'"
 	}
 	
 	// SELECT DATE OF GRAPH HERE
 	gen startdate=dofc(starttime)
-	keep if startdate==mdy(06,19,2018) // THIS IS THE VALUE TO CHANGE
+	keep if startdate==mdy(06,15,2018) // THIS IS THE VALUE TO CHANGE
 	
 	gen date_HRF = dofc(starttime)
 	format date_HRF %td
@@ -262,11 +403,27 @@ if ("$enum_graph" == "on") {
 	local title_m = month(date_HRF)
 	local title_y = year(date_HRF)
 	
-	keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
-		userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
-		userid == "`team_choice'5" | userid == "`team_choice'6" | ///
-		userid == "`team_choice'7" | userid == "`team_choice'8" | ///
-		userid == "`team_choice'9" 
+	noisily display _continue /// 
+		"Creating graph for Team `team_choice' on `title_d'/`title_m'/`title_y'... "
+	
+	sort userid
+	
+	// TODO: make L2 show up here
+	if ("`team_choice'" != "K") {
+		keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
+			userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
+			userid == "`team_choice'5" | userid == "`team_choice'6" | ///
+			userid == "`team_choice'7" | userid == "`team_choice'8" | ///
+			userid == "`team_choice'9" 
+	}
+	else {
+		keep if userid == "`team_choice'1" | userid == "`team_choice'2" | /// 
+			userid == "`team_choice'3" | userid == "`team_choice'4" | /// 
+			userid == "`team_choice'5" | userid == "`team_choice'6" | ///
+			userid == "`team_choice'7" | userid == "`team_choice'8" | ///
+			userid == "`team_choice'9" | userid == "L2"
+	}
+		
 	gen starttime2 = hh(starttime)+mm(starttime)/60+ss(starttime)/3600
 	
 	// generate missing enumerators
@@ -300,8 +457,8 @@ if ("$enum_graph" == "on") {
 		label list userid2
 		label define userid2 1 "Joseline N." 2 "Peter K." 3 "Davis M." 4 /// 
 			"Doreen T." 5 "Kenneth Y." 6 "Anita K." 7 "Mary Clare K." 8 ///
-			"Irene(Atto) N.", modify
-		local number_team = 8
+			"Irene(Atto) N." 9 "Shadia", modify
+		local number_team = 9
 	}
 	/*Uganda*/	
 	if "`team_choice'"== "U" {
@@ -361,16 +518,20 @@ if ("$enum_graph" == "on") {
 	
 	
 	if "`c(username)'" == "grahamstubbs" {
-		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda"
+		cd "/Users/grahamstubbs/Documents/Summer_2018/SpeakUp_Uganda/Graphs"
 		graph export "Team_`team_choice'_`title_d'_`title_m'_`title_y'.png", as(png)
-		cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs/Graphs"
+		cd "/Users/grahamstubbs/Documents/Summer_2018/stata/SpeakUp-HFCs"
 	}
 	drop startdate starttime2
 	
 	restore
+
+	noisily display "Done."
+	
+}
 }	
 	
-	
+quietly {
 /*******************************************************************************
 ********************************************************************************
 	ENUMERATORS DASHBOARD
@@ -387,22 +548,31 @@ if ("$enum_graph" == "on") {
 			# and % of H+R
 		
 *******************************************************************************
-*******************************************************************************/	
+*******************************************************************************/
+}	
 
-if "$enums" == "on" {	
+quietly {	
+if "$enums" == "on" {
 
-use "$TempFolder/Speakup_Round4_preclean.dta", clear
-preserve
+	noisily display "Creating enums dashboard... "
+
+	use "$TempFolder/Speakup_Round4_preclean.dta", clear
+	preserve
 
 *************************dashboard set up************************
-	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet ("Enums")
-	putexcel A2 = ("enums") B2 = ("number of entries") /// 
-		C2= ("avg. duration or entries") D2=("avg. start time") ///
-		E2=("avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") ///
-		N2=("# injuries") B1=("Metadata") ///
-		F1=("H+R") H1=("Missing Values")
-	putexcel (A3:O3), border(bottom, thin, black)
 
+	noisily display _col(5) _continue "Setting excel columns... "
+	
+	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet ("Enums")
+	putexcel A2 = ("Enums") B2 = ("Number of entries") /// 
+		C2= ("Avg. duration of entries") D2=("Avg. start time") ///
+		E2=("Avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") ///
+		N2=("# injuries") P2=("# Missing info + didn't need casefile") ///
+		B1=("Metadata") F1=("H+R") H1=("Missing Values")
+	putexcel (A3:Q3), border(bottom, thin, black)
+	
+	noisily display "Done."
+	
 **********************record values******************************
 	*average duration*
 	destring duration, replace
@@ -424,59 +594,161 @@ preserve
 	
 	*missing values*
 	*TAR*
-	bysort userid: egen totalTARmissing=total(tar_number==9999)
-	gen percentTARmissing=totalTARmissing/totalentries
+	bysort userid : egen totalTARmissing=total(tar_number == 9999)
+	gen percentTARmissing = totalTARmissing/totalentries
 	format percentTARmissing %9.2fc
 	*time*
 	destring time, replace
-	bysort userid: egen totaltimemissing=total(time==9999)
-	gen percenttimemissing=totaltimemissing/totalentries
+	bysort userid : egen totaltimemissing=total(time == 9999)
+	gen percenttimemissing = totaltimemissing/totalentries
 	format percenttimemissing %9.2fc
 	*death*
-	bysort userid: egen totaldeathmissing=total(deathcount==9999)
-	gen percentdeathmissing=totaldeathmissing/totalentries 
+	bysort userid : egen totaldeathmissing=total(deathcount == 9999)
+	gen percentdeathmissing = totaldeathmissing/totalentries 
 	format percentdeathmissing %9.2fc
 	*injury*
-	bysort userid: egen totalinjurymissing=total(injurycount==9999)
-	gen percentinjurymissing=totalinjurymissing/totalentries
+	bysort userid : egen totalinjurymissing=total(injurycount == 9999)
+	gen percentinjurymissing = totalinjurymissing/totalentries
 	format percentinjurymissing %9.2fc
+	*Missing + no casefile*
+	bysort userid : egen totalmissing_nocasefile = ///
+		total(casefile == 2 & ///
+		(injurycount == 9999 | deathcount == 9999 | time == 9999 | ///
+		tar_number == 9999 | causeofaccident == 9999))
+	gen pctmissing_nocasefile = totalmissing_nocasefile/totalentries
+	format pctmissing_nocasefile %9.2fc
 	
 	/*export to excel*/
+	noisily display _col(5) _continue "Exporting dashboard to excel... "
 	collapse totalentries avg_duration avg_starttime avg_endtime ///
 		totalhitandrun percenthitandrun totalTARmissing percentTARmissing ///
 		totaltimemissing percenttimemissing totaldeathmissing ///
-		percentdeathmissing totalinjurymissing percentinjurymissing, by(userid)
+		percentdeathmissing totalinjurymissing percentinjurymissing ///
+		totalmissing_nocasefile pctmissing_nocasefile, by(userid)
+		
 	export excel using "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
 		cell(A4) sheet ("Enums", modify)
-	levelsof userid
+		
+	quietly levelsof userid
 	local linedist = r(r) + 3
 	putexcel (A1:A`linedist'), border(right, thin, black)
 	putexcel (E1:E`linedist'), border(right, thin, black)
 	putexcel (G1:G`linedist'), border(right, thin, black)
-	putexcel (O1:O`linedist'), border(right, thin, black)
+	putexcel (Q1:Q`linedist'), border(right, thin, black)
 	
-	putexcel (G4:G60), nformat(percent_d2)
-	putexcel (I4:I60), nformat(percent_d2)
-	putexcel (K4:K60), nformat(percent_d2)
-	putexcel (M4:M60), nformat(percent_d2)
-	putexcel (O4:O60), nformat(percent_d2)
+	putexcel F3 = ("#") G3 = ("%") H3 = ("#") I3 = ("%") J3 = ("#") ///
+		K3 = ("%") L3 = ("#") M3 = ("%") N3 = ("#") O3 = ("%") P3 = ("#") ///
+		Q3 = ("%")
+	putexcel (A1:Q3), bold
 	
-	putexcel F3 = "#"
-	putexcel G3 = "%"
-	putexcel H3 = "#"
-	putexcel I3 = "%"
-	putexcel J3 = "#"
-	putexcel K3 = "%"
-	putexcel L3 = "#"
-	putexcel M3 = "%"
-	putexcel N3 = "#"
-	putexcel O3 = "%"
-	putexcel (A1:O3), bold
+	noisily display "Done."
 	
-restore
+	
+	// mata section for specific excel formatting
+	noisily display _col(5) _continue "Formatting dashboard... "
+	mata
+	
+	st_view(Z=., ., .)
+	
+	B = xl()
+	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
+	B.set_sheet("Enums")
+	
+	B.set_mode("open")
+	
+	fmt_rows = (4, rows(Z) + 4)
+	
+	hr_col = 7
+	notar_col = 9
+	notime_col = 11
+	nodeath_col = 13
+	noinj_col = 15
+	nocf_col = 17
+	
+	B.set_column_width(2, 2, 15)
+	B.set_column_width(3, 3, 19)
+	B.set_column_width(4, 5, 13)
+	
+	for (i=1; i<=rows(Z); i++) {
+		if (Z[i, hr_col] >= 0.3) {
+			B.set_number_format(i+3, hr_col-1, "[Red]")
+			B.set_number_format(i+3, hr_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (hr_col-1, hr_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, hr_col-1, "[Black]")
+			B.set_number_format(i+3, hr_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (hr_col-1, hr_col), "none", "white")
+		}
+		
+		if (Z[i, notar_col] > 0) {
+			B.set_number_format(i+3, notar_col-1, "[Red]")
+			B.set_number_format(i+3, notar_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (notar_col-1, notar_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, notar_col-1, "[Black]")
+			B.set_number_format(i+3, notar_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (notar_col-1, notar_col), "none", "white")
+		}
+		
+		if (Z[i, notime_col] >= 0.25) {
+			B.set_number_format(i+3, notime_col-1, "[Red]")
+			B.set_number_format(i+3, notime_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (notime_col-1, notime_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, notime_col-1, "[Black]")
+			B.set_number_format(i+3, notime_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (notime_col-1, notime_col), "none", "white")
+		}
+		
+		if (Z[i, nodeath_col] >= 0.25) {
+			B.set_number_format(i+3, nodeath_col-1, "[Red]")
+			B.set_number_format(i+3, nodeath_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (nodeath_col-1, nodeath_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, nodeath_col-1, "[Black]")
+			B.set_number_format(i+3, nodeath_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (nodeath_col-1, nodeath_col), "none", "white")
+		}
+		
+		if (Z[i, noinj_col] >= 0.25) {
+			B.set_number_format(i+3, noinj_col-1, "[Red]")
+			B.set_number_format(i+3, noinj_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (noinj_col-1, noinj_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, noinj_col-1, "[Black]")
+			B.set_number_format(i+3, noinj_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (noinj_col-1, noinj_col), "none", "white")
+		}
+		
+		if (Z[i, nocf_col] > 0) {
+			B.set_number_format(i+3, nocf_col-1, "[Red]")
+			B.set_number_format(i+3, nocf_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (nocf_col-1, nocf_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, nocf_col-1, "[Black]")
+			B.set_number_format(i+3, nocf_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (nocf_col-1, nocf_col), "none", "white")
+		}
+	}
+	
+	B.close_book()
+	
+	end
+	noisily display "Done. "
+	// end mata section
+	
+	restore
+	noisily display "Enums dashboard done."
+}
 }
 
-
+quietly {
 /*******************************************************************************
 ********************************************************************************
 	QUALITY DASHBOARD
@@ -498,8 +770,11 @@ restore
 						
 *******************************************************************************
 *******************************************************************************/	
-
+}
+quietly {
 if "$quality" == "on" {	
+
+	noisily display "Creating enums dashboard... "
 
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	
@@ -513,17 +788,22 @@ if "$quality" == "on" {
 	if ("$fill_in_previous_dates" == "on") {
 		// this is only valid for June and July with a start date of June 14
 		// this should be changed if this code is used for another purpose
-		gen date_num = substr("$today", 1, 2)
-		gen month_str = substr("$today", 4, 3)
-		gen month_num = "0"
-		if (month_str == "Jun") {
-			replace month_num = "6"
+		quietly {
+			gen date_num = substr("$today", 1, 2)
+			gen month_str = substr("$today", 4, 3)
+			gen month_num = "0"
+			destring date_num, replace
+			if (month_str == "Jun") {
+				replace month_num = "6"
+			}
+			if (month_str == "Jul") {
+				replace month_num = "7"
+				if (date_num > 4) {
+					replace date_num = 4
+				}
+			}
+			destring month_num, replace
 		}
-		if (month_str == "Jul") {
-			replace month_num = "7"
-		}
-		destring date_num, replace
-		destring month_num, replace
 		local loop_end = 0
 		if (month_num == 6) {
 			local loop_end = date_num - 13
@@ -532,8 +812,8 @@ if "$quality" == "on" {
 			local loop_end = date_num + 17
 		}
 		if ("$debug" == "on") {
-			disp "Previous dates will be filled in"
-			disp "Number of loops to be performed: `loop_end'"
+			noisily disp "Previous dates will be filled in"
+			noisily disp "Number of loops to be performed: `loop_end'"
 		}
 	}
 	
@@ -541,7 +821,7 @@ if "$quality" == "on" {
 	
 		use "$TempFolder/Speakup_Round4_preclean.dta", clear
 		preserve
-		
+				
 		if ("$fill_in_previous_dates" == "on") {
 			// as the outer loop iterates, this (temporaritly) drops all obs 
 			//  submitted for dates after the date the current iteration of the 
@@ -567,7 +847,7 @@ if "$quality" == "on" {
 		*************************** get Total records **************************
 		count
 		local total_records = r(N)
-		
+				
 		// determine export column depding on date of observations currently
 		//  being viewed by this iteration of the for loop
 		local export_col = "A"
@@ -576,12 +856,20 @@ if "$quality" == "on" {
 			local export_col_num = `HFC_loop_num' + 13 + 53
 		}
 		else {
-			gen date_num = substr("$today", 1, 2)
-			destring date_num, replace
-			local export_col_num = date_num + 53
-			drop date_num
+			quietly {
+				gen date_num = substr("$today", 1, 2)
+				destring date_num, replace
+				gen month_str = substr("$today", 4, 3)
+				if (month_str == "Jun") {
+					local export_col_num = date_num + 53
+				}
+				else if (month_str == "Jul") {
+					local export_col_num = date_num + 53 + 30
+				}
+				drop date_num
+			}
 		}
-		
+				
 		// Ensure column loops to AA after Z
 		if (`export_col_num') <= 90 {
 			local export_col = char(`export_col_num')
@@ -591,27 +879,32 @@ if "$quality" == "on" {
 			local export_col = "A" + "`export_col'"
 		}
 		
+		if ("$debug" == "on") {
+			noisily disp "`export_col_num'"
+			noisily disp "`export_col'"
+		}
+				
 		// export to excel
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+		quietly putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
 			sheet("Quality")
 		
 		// this only needs to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			putexcel A2 = "Summary of Potential Errors", bold
-			putexcel B4 = "Total Records"
-			putexcel B6 = "# H+R accidents"
-			putexcel B7 = "% of H+R accidents"
-			putexcel B9 = "# duplicate accidents"
-			putexcel B10 = "% of duplicate accidents"
-			putexcel B12 = "# flags from comment"
-			putexcel B13 = "% flags from comment"
-			putexcel (B4:B13), border(right, medium, black)
+				putexcel A2 = "Summary of Potential Errors", bold
+				putexcel B4 = ("Total Records") B6 = ("# H+R accidents") ///
+					B7 = ("% H+R accidents") B9 = ("# duplicate accidents") ///
+					B10 = ("% duplicate accidents") ///
+					B12 = ("# flags from comment") ///
+					B13 = ("% flags from comment") ///
+					B15 = ("# serious/fatal records from TSD") ///
+					B16 = ("% serious/fatal records from TSD")
+				putexcel (B4:B16), border(right, medium, black)
 		}
 		if ("$debug" == "on") {
-			disp "Today: $today"
-			disp "Exporting summaries to column `export_col'"
+			noisily disp "Today: $today"
+			noisily disp "Exporting summaries to column `export_col'"
 		}
-		
+				
 		// Determine what to label column dates
 		local date_str = ""
 		if ("$fill_in_previous_dates" == "on") {
@@ -629,35 +922,46 @@ if "$quality" == "on" {
 		else {
 			local date_str = "$today"
 		}
+		
+		noisily display _col(5) "Generating quality summary for `date_str'... "
+				
 		putexcel `export_col'3 = "`date_str'", bold ///
 			border(bottom, medium, black) font("Calibri (Body)", 11, black) ///
 			overwritefmt
-		putexcel `export_col'4 = `total_records'
+		putexcel `export_col'4 = `total_records'			
 		
+		****************** get number and percent of hit&runs ******************
+		noisily display _col(10) _continue "Counting hit and runs... "
 		
-		/* get number and percent of hit&runs */
-		count if hitandrun == 1
+		quietly count if hitandrun == 1
 		local hitandrun_amt = r(N)
 		local hitandrun_pct = `hitandrun_amt'/`total_records'
 		
 		// export to excel
 		putexcel `export_col'6 = `hitandrun_amt'
 		putexcel `export_col'7 = (`hitandrun_pct'), nformat(percent_d2)	
-		
+				
 		// these only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+			export excel key deviceid subscriberid userid *region station /// 
+				stationreported substation tar_yn tar_number combined_date ///
+				time location locationcomment location_name psvcount ///
+				hitandrun image* submissiondate starttime endtime ///
+				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
 				if hitandrun == 1, sheetreplace sheet("_export H+R ") ///
 				firstrow(var)
 			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
 				modify sheet("_export H+R ")
 			local hr_highlight_length = `hitandrun_amt'+1
-			putexcel (AA1:AA`hr_highlight_length'), ///
+			putexcel (R1:R`hr_highlight_length'), ///
 				fpattern(solid, lightpink, lightpink) overwritefmt
-			putexcel (A1:GU1), bold border(bottom, thin, black)
+			putexcel (A1:Y1), bold border(bottom, thin, black)
 		}
-		
+			
+		noisily display "Done."
 		*********** Flag and export all entries with potential issues **********
+		noisily display _col(10) _continue "Counting flagged entries... "
+		
 		gen potential_issues = 0
 		
 		// generate a new variable that is equivalent to additionalinfo but 
@@ -665,11 +969,11 @@ if "$quality" == "on" {
 		gen additionalinfo_lower = lower(additionalinfo)
 		
 		// remove punctuation
-		replace additionalinfo_lower = ///
+		quietly replace additionalinfo_lower = ///
 			subinstr(additionalinfo_lower, ".", "", .)
 		
 		// flag entries that may contain something worth checking
-		replace potential_issues = 1 if (additionalinfo_lower != "" ///
+		quietly replace potential_issues = 1 if (additionalinfo_lower != "" ///
 			& additionalinfo_lower != "none" & additionalinfo_lower != "no" ///
 			& additionalinfo_lower != "n/a" & additionalinfo_lower != "nothing")
 		
@@ -677,15 +981,17 @@ if "$quality" == "on" {
 		drop additionalinfo_lower
 		
 		// get counts
-		count if potential_issues == 1
+		quietly count if potential_issues == 1
 		local flags_count = r(N)
 		local flags_pct = `flags_count'/`total_records'
-		
+				
 		// export to excel
-		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
-			sheet("Quality")
-		putexcel `export_col'12 = `flags_count'
-		putexcel `export_col'13 = `flags_pct', nformat(percent_d2)
+		quietly {
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+				sheet("Quality")
+			putexcel `export_col'12 = `flags_count'
+			putexcel `export_col'13 = `flags_pct', nformat(percent_d2)
+		}
 		
 		if (`HFC_loop_num' == `loop_end') {
 			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
@@ -696,14 +1002,40 @@ if "$quality" == "on" {
 			local flags_highlight_length = `flags_count' + 1
 			putexcel (AM1:AM`flags_highlight_length'), ///
 				fpattern(solid, lightpink, lightpink) overwritefmt
-			putexcel (A1:GV1), bold border(bottom, thin, black)
+			putexcel (A1:HL1), bold border(bottom, thin, black)
 		}
-		
+				
 		// drop var that is no longer needed
 		drop potential_issues
 		
+		noisily display "Done."
+		********** get number and percent of serious/fatal TSD entries *********
+		noisily display _col(10) _continue "Counting serious/fatal TSD entries... "
 		
+		quietly count if tar_yn == 0 & primary_source == 2
+		local tsd_entries_amt = r(N)
+		quietly count if tar_yn == 0 & primary_source == 2 & natureofaccident < 3
+		local tsd_seriousfatal_amt = r(N)
+		local tsd_seriousfatal_pct = ///
+			`tsd_seriousfatal_amt'/`tsd_entries_amt'
+		
+		// export to excel
+		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+				sheet("Quality")
+		putexcel `export_col'15 = `tsd_seriousfatal_amt'
+		putexcel `export_col'16 = (`tsd_seriousfatal_pct'), nformat(percent_d2)	
+		
+		// This only needs to be exported once
+		if (`HFC_loop_num' == `loop_end') {
+			putexcel A16 = ///
+				"This percentage is calculated as (# of serious&fatal TSD entries)/(# of TSD entries) ", ///
+				italic font("Calibri (Body)", 11, red)
+		}
+		
+		noisily display "Done."
 		********************* search and record duplicates *********************
+		noisily display _col(10) _continue "Counting duplicate records... "
+		
 		// find and group records with the same date
 		duplicates tag date, gen(same_date)  
 		sort date
@@ -727,7 +1059,7 @@ if "$quality" == "on" {
 				// assign each record on the same date a matching value in
 				//   same_date_grouped
 				while `j' <= (`i' + `amt_to_check') {
-					replace same_date_grouped = `counter' if _n == `j'
+					quietly replace same_date_grouped = `counter' if _n == `j'
 					local j = `j' + 1
 				}
 				
@@ -765,7 +1097,7 @@ if "$quality" == "on" {
 				
 					local psvregistration_k_j = psvregistration`k'[`j']
 					if ("$debug" == "on") {
-							display ///
+							noisily display ///
 								"psvregistration`k'[`j']: `psvregistration_k_j'" 
 					}
 					
@@ -778,9 +1110,10 @@ if "$quality" == "on" {
 							local psvlist_size = `psvlist_size' + 1
 							
 							if ("$debug" == "on") {
-								display "size of the list is 0, add `psvregistration_k_j' to list"
-								display "list is now `psvlist'"
-								display "size is now `psvlist_size'"
+								noisily display ///
+									"size of the list is 0, add `psvregistration_k_j' to list"
+								noisily display "list is now `psvlist'"
+								noisily display "size is now `psvlist_size'"
 							}
 						}
 						
@@ -791,9 +1124,10 @@ if "$quality" == "on" {
 							local psvlist_size = `psvlist_size' + 1
 							
 							if ("$debug" == "on") {
-								display "`psvregistration_k_j' is not on the list; add it"
-								display "list is now `psvlist'"
-								display "size is now `psvlist_size'"
+								noisily display ///
+									"`psvregistration_k_j' is not on the list; add it"
+								noisily display "list is now `psvlist'"
+								noisily display "size is now `psvlist_size'"
 							}
 						}
 						
@@ -803,18 +1137,18 @@ if "$quality" == "on" {
 							local group_ct = same_date_grouped[`i']
 							
 							if ("$debug" == "on") {
-								display "`psvregistration_k_j' is already on the list!!"
-								display "putting '`group_ct'' in record `j'"
+								noisily display "`psvregistration_k_j' is already on the list!!"
+								noisily display "putting '`group_ct'' in record `j'"
 							}
 							
-							replace duplicates_grouped = /// 
+							quietly replace duplicates_grouped = /// 
 								same_date_grouped[`i'] if _n == `j'
 							local position : list posof ///
 								"`psvregistration_k_j'" in psvlist
 							local psv_counter = 0
 							
 							if "$debug" == "on" {
-								display "position: `position'"
+								noisily display "position: `position'"
 							}
 							
 							// search the list for the matching psv registration 
@@ -826,19 +1160,19 @@ if "$quality" == "on" {
 									psvcount[`m']
 								
 								if ("$debug" == "on") {
-									display "psv_counter: `psv_counter'"
-									display "m: `m'"
+									noisily display "psv_counter: `psv_counter'"
+									noisily display "m: `m'"
 								}
 								
 								if (`psv_counter' >= `position') {
 									local group_ct = same_date_grouped[`i']
 									
 									if ("$debug" == "on") {
-										display ///
+										noisily display ///
 											"putting '`group_ct'' in record `m'" 
 									}
 									
-									replace duplicates_grouped = ///
+									quietly replace duplicates_grouped = ///
 										same_date_grouped[`i'] if _n == `m'
 									continue, break
 								}
@@ -868,7 +1202,7 @@ if "$quality" == "on" {
 		gsort - duplicates_grouped psvregistration1 starttime
 		
 		// get number and percent of duplicates
-		count
+		quietly count
 		local dups_incl_originals = r(N)
 		local duplicate_count = 0
 		local i = 1
@@ -882,24 +1216,44 @@ if "$quality" == "on" {
 		// export to excel
 		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
 			sheet("Quality")
-		
 		putexcel `export_col'9 = `duplicate_count'
 		putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
 		
+		noisily display "Done."
+		
+		noisily display _col(5) "Summary for `date_str' done."
+		
 		// These only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
+			noisily display _col(5) _continue "Highlighting duplicate records... "
+		
 			putexcel A9 = ///
 				"This is the amount of records that are likelyduplicates of another", ///
 				italic font("Calibri (Body)", 11, red)
-			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+			export excel key deviceid subscriberid userid *region station /// 
+				stationreported substation tar_yn tar_number combined_date ///
+				time location locationcomment location_name psvcount ///
+				hitandrun causeofaccident natureofaccident deathcount ///
+				injurycount minor primary_source casefile additionalinfo ///
+				psv_number1 recorded1 plateissue1 writein1 psvregistration1 ///
+				vehicletype1 lobtype1 publicuse_yn1 privateuse1 ///
+				psv_number2 recorded2 plateissue2 writein2 psvregistration2 ///
+				vehicletype2 lobtype2 publicuse_yn2 privateuse2 ///
+				psv_number3 recorded3 plateissue3 writein3 psvregistration3 ///
+				vehicletype3 lobtype3 publicuse_yn3 privateuse3 ///
+				psv_number4 recorded4 plateissue4 writein4 psvregistration4 ///
+				vehicletype4 lobtype4 publicuse_yn4 privateuse4 ///
+				image* submissiondate starttime endtime /// 
+				using "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
 				if duplicates_grouped != 0, sheetreplace /// 
 				sheet("_export dups") firstrow(var)
-			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", /// 
+			quietly putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", /// 
 				modify sheet("_export dups")
 			local dup_highlight_length = `dups_incl_originals'+1
-			putexcel (A1:GY1), bold border(bottom, thin, black)
+			putexcel (A1:BQ1), bold border(bottom, medium, black)
 		
 			// highlight exported duplicates to make viewing easier
+			disp "Highlighting duplicates..."
 			local i = 1
 			local highlight_start = 2
 			local loops = 0
@@ -908,16 +1262,18 @@ if "$quality" == "on" {
 				local highlight_end = `highlight_start' + `highlight_length'
 				
 				if ("$debug" == "on") {
-					display "Higlighting from A`highlight_start' to GY`highlight_end'"
+					noisily display ///
+						"Higlighting from A`highlight_start' to GY`highlight_end'"
 				}
 				
 				if (mod(`loops', 2) == 0) {
-					putexcel (A`highlight_start':GY`highlight_end'), /// 
-						fpattern(solid, "198 242 255", "198 242 255") ///
-						overwritefmt
+					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
+							fpattern(solid, "198 242 255", "198 242 255") ///
+							overwritefmt
+					noisily display _continue "... "
 				}
 				else if (mod(`loops', 2) == 1) {
-					putexcel (A`highlight_start':GY`highlight_end'), /// 
+					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
 						fpattern(solid, "255 222 173", "255 222 173") ///
 						overwritefmt
 				}
@@ -926,16 +1282,36 @@ if "$quality" == "on" {
 				local highlight_start = `highlight_end' + 1
 				local loops = `loops' + 1
 			}
+			noisily disp "Done."
 		}
 		
 		restore
 		
 		if ("$debug" == "on") {
-			disp "End of loop `HFC_loop_num'"
+			noisily disp "End of loop `HFC_loop_num'"
 		}
 	}
 	
+	// mata for formatting
+	mata
+	
+	B = xl()
+	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
+	B.set_sheet("Quality")
+	
+	B.set_mode("open")
+	
+	B.set_column_width(2, 2, 26)
+	B.set_column_width(3, 20, 10)
+	
+	B.close_book()
+	
+	end
+	// end mata
+	
 ****************************    SURVEY PROGRESS    *****************************
+
+	noisily disp _continue "Creating progress dashboard... "
 		
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	preserve
@@ -944,9 +1320,21 @@ if "$quality" == "on" {
 	count
 	local total_records = r(N)
 	
-	// sort by region and ignore capitalization for substations
+	// sort by region and ignore capitalization + punctuation for substations
 	sort region subregion station substation
-	replace substation = lower(substation)
+	quietly replace substation = lower(substation)
+	quietly replace substation = ///
+		subinstr(substation, ".", "", .)
+	quietly replace substation = ///
+		subinstr(substation, "at ", "", .)
+	quietly replace substation = ///
+		subinstr(substation, " police station", "", .)
+	quietly replace substation = ///
+		subinstr(substation, " police post", "", .)
+	quietly replace substation = ///
+		subinstr(substation, " sub station", "", .)
+	quietly replace substation = ///
+		subinstr(substation, " substation", "", .)
 	
 	// contract to variables of interest
 	contract region subregion station substation
@@ -969,4 +1357,8 @@ if "$quality" == "on" {
 	restore
 	
 	putexcel close
+
+	noisily display "Done."
+}
+}
 }
