@@ -850,6 +850,8 @@ if "$quality" == "on" {
 				putexcel B10 = "% of duplicate accidents"
 				putexcel B12 = "# flags from comment"
 				putexcel B13 = "% flags from comment"
+				putexcel B15 = "# serious/fatal records from TSD"
+				putexcel B16 = "% serious/fatal records from TSD"
 				putexcel (B4:B13), border(right, medium, black)
 			}
 		}
@@ -1224,9 +1226,21 @@ if "$quality" == "on" {
 	count
 	local total_records = r(N)
 	
-	// sort by region and ignore capitalization for substations
+	// sort by region and ignore capitalization + punctuation for substations
 	sort region subregion station substation
 	quietly replace substation = lower(substation)
+	quietly replace substation = ///
+		subinstr(substation, ".", "", .)
+	quietly replace substation = ///
+		subinstr(substation, "at ", "", .)
+	quietly replace substation = ///
+		subinstr(substation, " police station", "", .)
+	quietly replace substation = ///
+		subinstr(substation, " police post", "", .)
+	quietly replace substation = ///
+		subinstr(substation, " sub station", "", .)
+	quietly replace substation = ///
+		subinstr(substation, " substation", "", .)
 	
 	// contract to variables of interest
 	contract region subregion station substation
