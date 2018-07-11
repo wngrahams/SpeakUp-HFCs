@@ -35,10 +35,10 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "on"
+global pairs "off"
 global enum_graph "off"
 global enums "on"
-global quality "on"
+global quality "off"
 global debug "off"
 global fill_in_previous_dates "on" // explanation found in quality section
 
@@ -528,9 +528,9 @@ preserve
 
 *************************dashboard set up************************
 	putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify sheet ("Enums")
-	putexcel A2 = ("enums") B2 = ("number of entries") /// 
-		C2= ("avg. duration of entries") D2=("avg. start time") ///
-		E2=("avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") ///
+	putexcel A2 = ("Enums") B2 = ("Number of entries") /// 
+		C2= ("Avg. duration of entries") D2=("Avg. start time") ///
+		E2=("Avg. end time") H2=("TAR") J2=("Time") L2=("# deaths") ///
 		N2=("# injuries") P2=("# Missing info + didn't need casefile") ///
 		B1=("Metadata") F1=("H+R") H1=("Missing Values")
 	putexcel (A3:Q3), border(bottom, thin, black)
@@ -628,7 +628,7 @@ preserve
 	
 	B.set_column_width(2, 2, 15)
 	B.set_column_width(3, 3, 19)
-	B.set_column_width(4, 5, 12)
+	B.set_column_width(4, 5, 13)
 	
 	for (i=1; i<=rows(Z); i++) {
 		if (Z[i, hr_col] >= 0.3) {
