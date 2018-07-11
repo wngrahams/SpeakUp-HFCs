@@ -1238,7 +1238,7 @@ if "$quality" == "on" {
 	
 	B.set_mode("open")
 	
-	B.set_column_width(2, 2, 19)
+	B.set_column_width(2, 2, 26)
 	B.set_column_width(3, 20, 10)
 	
 	B.close_book()
