@@ -535,22 +535,6 @@ preserve
 		B1=("Metadata") F1=("H+R") H1=("Missing Values")
 	putexcel (A3:Q3), border(bottom, thin, black)
 	
-	mata
-	
-	B = xl()
-	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
-	B.set_sheet("Enums")
-	
-	B.set_mode("open")
-	
-	B.set_column_width(2, 2, 15)
-	B.set_column_width(3, 3, 19)
-	B.set_column_width(4, 5, 12)
-	
-	B.close_book()
-	
-	end
-	
 
 **********************record values******************************
 	*average duration*
@@ -603,8 +587,10 @@ preserve
 		totaltimemissing percenttimemissing totaldeathmissing ///
 		percentdeathmissing totalinjurymissing percentinjurymissing ///
 		totalmissing_nocasefile pctmissing_nocasefile, by(userid)
+		
 	export excel using "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
 		cell(A4) sheet ("Enums", modify)
+		
 	levelsof userid
 	local linedist = r(r) + 3
 	putexcel (A1:A`linedist'), border(right, thin, black)
@@ -612,26 +598,110 @@ preserve
 	putexcel (G1:G`linedist'), border(right, thin, black)
 	putexcel (Q1:Q`linedist'), border(right, thin, black)
 	
-	putexcel (G4:G60), nformat(percent_d2)
-	putexcel (I4:I60), nformat(percent_d2)
-	putexcel (K4:K60), nformat(percent_d2)
-	putexcel (M4:M60), nformat(percent_d2)
-	putexcel (O4:O60), nformat(percent_d2)
-	putexcel (Q4:Q60), nformat(percent_d2)
-	
-	putexcel F3 = "#"
-	putexcel G3 = "%"
-	putexcel H3 = "#"
-	putexcel I3 = "%"
-	putexcel J3 = "#"
-	putexcel K3 = "%"
-	putexcel L3 = "#"
-	putexcel M3 = "%"
-	putexcel N3 = "#"
-	putexcel O3 = "%"
-	putexcel P3 = "#"
-	putexcel Q3 = "%"
+	putexcel F3 = ("#") G3 = ("%") H3 = ("#") I3 = ("%") J3 = ("#") ///
+		K3 = ("%") L3 = ("#") M3 = ("%") N3 = ("#") O3 = ("%") P3 = ("#") ///
+		Q3 = ("%")
 	putexcel (A1:Q3), bold
+	
+	
+	
+	
+	// mata section for specific excel formatting
+	mata
+	
+	st_view(Z=., ., .)
+	
+	B = xl()
+	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
+	B.set_sheet("Enums")
+	
+	B.set_mode("open")
+	
+	fmt_rows = (4, rows(Z) + 4)
+	
+	hr_col = 7
+	notar_col = 9
+	notime_col = 11
+	nodeath_col = 13
+	noinj_col = 15
+	nocf_col = 17
+	
+	B.set_column_width(2, 2, 15)
+	B.set_column_width(3, 3, 19)
+	B.set_column_width(4, 5, 12)
+	
+	for (i=1; i<=rows(Z); i++) {
+		if (Z[i, hr_col] >= 0.3) {
+			B.set_number_format(i+3, hr_col-1, "[Red]")
+			B.set_number_format(i+3, hr_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (hr_col-1, hr_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, hr_col-1, "[Black]")
+			B.set_number_format(i+3, hr_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (hr_col-1, hr_col), "none", "white")
+		}
+		
+		if (Z[i, notar_col] > 0) {
+			B.set_number_format(i+3, notar_col-1, "[Red]")
+			B.set_number_format(i+3, notar_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (notar_col-1, notar_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, notar_col-1, "[Black]")
+			B.set_number_format(i+3, notar_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (notar_col-1, notar_col), "none", "white")
+		}
+		
+		if (Z[i, notime_col] >= 0.25) {
+			B.set_number_format(i+3, notime_col-1, "[Red]")
+			B.set_number_format(i+3, notime_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (notime_col-1, notime_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, notime_col-1, "[Black]")
+			B.set_number_format(i+3, notime_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (notime_col-1, notime_col), "none", "white")
+		}
+		
+		if (Z[i, nodeath_col] >= 0.25) {
+			B.set_number_format(i+3, nodeath_col-1, "[Red]")
+			B.set_number_format(i+3, nodeath_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (nodeath_col-1, nodeath_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, nodeath_col-1, "[Black]")
+			B.set_number_format(i+3, nodeath_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (nodeath_col-1, nodeath_col), "none", "white")
+		}
+		
+		if (Z[i, noinj_col] >= 0.25) {
+			B.set_number_format(i+3, noinj_col-1, "[Red]")
+			B.set_number_format(i+3, noinj_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (noinj_col-1, noinj_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, noinj_col-1, "[Black]")
+			B.set_number_format(i+3, noinj_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (noinj_col-1, noinj_col), "none", "white")
+		}
+		
+		if (Z[i, nocf_col] > 0) {
+			B.set_number_format(i+3, nocf_col-1, "[Red]")
+			B.set_number_format(i+3, nocf_col, "[Red]#0.0%")
+			B.set_fill_pattern(i+3, (nocf_col-1, nocf_col), "solid", "pink")
+		}
+		else {
+			B.set_number_format(i+3, nocf_col-1, "[Black]")
+			B.set_number_format(i+3, nocf_col, "[Black]#0.0%")
+			B.set_fill_pattern(i+3, (nocf_col-1, nocf_col), "none", "white")
+		}
+	}
+	
+	B.close_book()
+	
+	end
+	// end mata section
 	
 restore
 }
