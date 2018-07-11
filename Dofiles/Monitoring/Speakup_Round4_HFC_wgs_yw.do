@@ -35,12 +35,12 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "off"
+global pairs "on"
 global enum_graph "off"
 global enums "on"
-global quality "off"
+global quality "on"
 global debug "off"
-global fill_in_previous_dates "off" // explanation found in quality section
+global fill_in_previous_dates "on" // explanation found in quality section
 
 *Date
 global today = c(current_date)
@@ -591,7 +591,7 @@ preserve
 	export excel using "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
 		cell(A4) sheet ("Enums", modify)
 		
-	levelsof userid
+	quietly levelsof userid
 	local linedist = r(r) + 3
 	putexcel (A1:A`linedist'), border(right, thin, black)
 	putexcel (E1:E`linedist'), border(right, thin, black)
@@ -876,19 +876,19 @@ if "$quality" == "on" {
 			local date_str = "$today"
 		}
 				
-			putexcel `export_col'3 = "`date_str'", bold ///
-				border(bottom, medium, black) font("Calibri (Body)", 11, black) ///
-				overwritefmt
-			putexcel `export_col'4 = `total_records'			
-			
-			/* get number and percent of hit&runs */
-			count if hitandrun == 1
-			local hitandrun_amt = r(N)
-			local hitandrun_pct = `hitandrun_amt'/`total_records'
-			
-			// export to excel
-			putexcel `export_col'6 = `hitandrun_amt'
-			putexcel `export_col'7 = (`hitandrun_pct'), nformat(percent_d2)	
+		putexcel `export_col'3 = "`date_str'", bold ///
+			border(bottom, medium, black) font("Calibri (Body)", 11, black) ///
+			overwritefmt
+		putexcel `export_col'4 = `total_records'			
+		
+		/* get number and percent of hit&runs */
+		count if hitandrun == 1
+		local hitandrun_amt = r(N)
+		local hitandrun_pct = `hitandrun_amt'/`total_records'
+		
+		// export to excel
+		putexcel `export_col'6 = `hitandrun_amt'
+		putexcel `export_col'7 = (`hitandrun_pct'), nformat(percent_d2)	
 				
 		// these only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
@@ -940,17 +940,15 @@ if "$quality" == "on" {
 		}
 		
 		if (`HFC_loop_num' == `loop_end') {
-			quietly {
-				export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
-					if potential_issues==1, sheetreplace sheet("_export flags") ///
-					firstrow(var)
-				putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
-					modify sheet("_export flags")
-				local flags_highlight_length = `flags_count' + 1
-				putexcel (AM1:AM`flags_highlight_length'), ///
-					fpattern(solid, lightpink, lightpink) overwritefmt
-				putexcel (A1:GV1), bold border(bottom, thin, black)
-			}
+			export excel "$OutputFolder/Monitoring_template_Rd4.xlsx" ///
+				if potential_issues==1, sheetreplace sheet("_export flags") ///
+				firstrow(var)
+			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", ///
+				modify sheet("_export flags")
+			local flags_highlight_length = `flags_count' + 1
+			putexcel (AM1:AM`flags_highlight_length'), ///
+				fpattern(solid, lightpink, lightpink) overwritefmt
+			putexcel (A1:GV1), bold border(bottom, thin, black)
 		}
 				
 		// drop var that is no longer needed
@@ -1134,16 +1132,14 @@ if "$quality" == "on" {
 		local duplicate_pct = `duplicate_count'/`total_records'
 		
 		// export to excel
-		quietly {
-			putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
-				sheet("Quality")
-			putexcel `export_col'9 = `duplicate_count'
-			putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
-		}
+		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+			sheet("Quality")
+		putexcel `export_col'9 = `duplicate_count'
+		putexcel `export_col'10 = (`duplicate_pct'), nformat(percent_d2)
 		
 		// These only need to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			quietly putexcel A9 = ///
+			putexcel A9 = ///
 				"This is the amount of records that are likelyduplicates of another", ///
 				italic font("Calibri (Body)", 11, red)
 			export excel key deviceid subscriberid userid *region station /// 
@@ -1166,7 +1162,7 @@ if "$quality" == "on" {
 			quietly putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", /// 
 				modify sheet("_export dups")
 			local dup_highlight_length = `dups_incl_originals'+1
-			quietly putexcel (A1:BQ1), bold border(bottom, medium, black)
+			putexcel (A1:BQ1), bold border(bottom, medium, black)
 		
 			// highlight exported duplicates to make viewing easier
 			local i = 1
@@ -1181,12 +1177,12 @@ if "$quality" == "on" {
 				}
 				
 				if (mod(`loops', 2) == 0) {
-					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
+					putexcel (A`highlight_start':BQ`highlight_end'), /// 
 						fpattern(solid, "198 242 255", "198 242 255") ///
 						overwritefmt
 				}
 				else if (mod(`loops', 2) == 1) {
-					quietly putexcel (A`highlight_start':BQ`highlight_end'), /// 
+					putexcel (A`highlight_start':BQ`highlight_end'), /// 
 						fpattern(solid, "255 222 173", "255 222 173") ///
 						overwritefmt
 				}
