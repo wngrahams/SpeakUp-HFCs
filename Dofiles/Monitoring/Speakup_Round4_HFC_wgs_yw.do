@@ -3,7 +3,7 @@
 Author: Béatrice Leydier, William Stubbs, Yuou Wu
 Email: bl517@georgetown.edu
 Date: 12/06/2018
-Updated: 21/06/2018
+Updated: 11/07/2018
 *******************************************************************************/
 
 	/*__________________
@@ -35,10 +35,10 @@ global OutputFolder "Monitoring/Round 4 monitoring"
 	
 *Switches
 global precleaning "on"
-global pairs "off"
+global pairs "on"
 global enum_graph "off"
 global enums "on"
-global quality "off"
+global quality "on"
 global debug "off"
 global fill_in_previous_dates "on" // explanation found in quality section
 
@@ -841,19 +841,15 @@ if "$quality" == "on" {
 		
 		// this only needs to be exported once
 		if (`HFC_loop_num' == `loop_end') {
-			quietly {
 				putexcel A2 = "Summary of Potential Errors", bold
-				putexcel B4 = "Total Records"
-				putexcel B6 = "# H+R accidents"
-				putexcel B7 = "% of H+R accidents"
-				putexcel B9 = "# duplicate accidents"
-				putexcel B10 = "% of duplicate accidents"
-				putexcel B12 = "# flags from comment"
-				putexcel B13 = "% flags from comment"
-				putexcel B15 = "# serious/fatal records from TSD"
-				putexcel B16 = "% serious/fatal records from TSD"
-				putexcel (B4:B13), border(right, medium, black)
-			}
+				putexcel B4 = ("Total Records") B6 = ("# H+R accidents") ///
+					B7 = ("% H+R accidents") B9 = ("# duplicate accidents") ///
+					B10 = ("% duplicate accidents") ///
+					B12 = ("# flags from comment") ///
+					B13 = ("% flags from comment") ///
+					B15 = ("# serious/fatal records from TSD") ///
+					B16 = ("% serious/fatal records from TSD")
+				putexcel (B4:B16), border(right, medium, black)
 		}
 		if ("$debug" == "on") {
 			disp "Today: $today"
@@ -883,7 +879,7 @@ if "$quality" == "on" {
 			overwritefmt
 		putexcel `export_col'4 = `total_records'			
 		
-		/* get number and percent of hit&runs */
+		****************** get number and percent of hit&runs ******************
 		count if hitandrun == 1
 		local hitandrun_amt = r(N)
 		local hitandrun_pct = `hitandrun_amt'/`total_records'
@@ -956,6 +952,26 @@ if "$quality" == "on" {
 		// drop var that is no longer needed
 		drop potential_issues
 		
+		********** get number and percent of serious/fatal TSD entries *********
+		count if tar_yn == 0 & primary_source == 2
+		local tsd_entries_amt = r(N)
+		count if tar_yn == 0 & primary_source == 2 & natureofaccident < 3
+		local tsd_seriousfatal_amt = r(N)
+		local tsd_seriousfatal_pct = ///
+			`tsd_seriousfatal_amt'/`tsd_entries_amt'
+		
+		// export to excel
+		putexcel set "$OutputFolder/Monitoring_template_Rd4.xlsx", modify ///
+				sheet("Quality")
+		putexcel `export_col'15 = `tsd_seriousfatal_amt'
+		putexcel `export_col'16 = (`tsd_seriousfatal_pct'), nformat(percent_d2)	
+		
+		// This only needs to be exported once
+		if (`HFC_loop_num' == `loop_end') {
+			putexcel A16 = ///
+				"This percentage is calculated as (# of serious&fatal TSD entries)/(# of TSD entries) ", ///
+				italic font("Calibri (Body)", 11, red)
+		}
 		
 		********************* search and record duplicates *********************
 		// find and group records with the same date
@@ -1206,7 +1222,7 @@ if "$quality" == "on" {
 	
 	B = xl()
 	B.load_book("$OutputFolder/Monitoring_template_Rd4.xlsx")
-	B.set_sheet("Enums")
+	B.set_sheet("Quality")
 	
 	B.set_mode("open")
 	
