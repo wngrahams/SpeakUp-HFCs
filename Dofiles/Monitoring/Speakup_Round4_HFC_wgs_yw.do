@@ -792,13 +792,16 @@ if "$quality" == "on" {
 			gen date_num = substr("$today", 1, 2)
 			gen month_str = substr("$today", 4, 3)
 			gen month_num = "0"
+			destring date_num, replace
 			if (month_str == "Jun") {
 				replace month_num = "6"
 			}
 			if (month_str == "Jul") {
 				replace month_num = "7"
+				if (date_num > 4) {
+					replace date_num = 4
+				}
 			}
-			destring date_num, replace
 			destring month_num, replace
 		}
 		local loop_end = 0
@@ -1308,7 +1311,7 @@ if "$quality" == "on" {
 	
 ****************************    SURVEY PROGRESS    *****************************
 
-	noisily disp _continue "Creating enums dashboard... "
+	noisily disp _continue "Creating progress dashboard... "
 		
 	use "$TempFolder/Speakup_Round4_preclean.dta", clear
 	preserve
